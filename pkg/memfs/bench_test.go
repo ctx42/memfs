@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ctx42/testing/pkg/kit/memfs"
+	"github.com/ctx42/memfs/pkg/memfs"
 )
 
 //goland:noinspection GoUnusedGlobalVariable

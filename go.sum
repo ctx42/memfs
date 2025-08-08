@@ -1,2 +1,4 @@
 github.com/ctx42/testing v0.32.0 h1:VdCqqMUUteOiQwJN2EqExwpJmMiSboR5Ojkva7LMu6M=
 github.com/ctx42/testing v0.32.0/go.mod h1:VHcxY4uhZQ8Lewevgmc9WHjJQc9CopJm9IAOTK5XbaM=
+github.com/ctx42/testing v0.34.0 h1:1zGPsZ7Ct4m5NXP3AXJe17p3bxImp7KXm1XTtkNpXzc=
+github.com/ctx42/testing v0.34.0/go.mod h1:VHcxY4uhZQ8Lewevgmc9WHjJQc9CopJm9IAOTK5XbaM=
