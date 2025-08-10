@@ -1,3 +1,6 @@
+## v0.2.0 (Sun, 10 Aug 2025 14:47:29 UTC)
+- feat: Add memfs.NewBuffer constructor function.
+
 ## v0.1.1 (Fri, 08 Aug 2025 14:05:03 UTC)
 - fix: Fix benchmark tests importing wrong memfs package.
 
