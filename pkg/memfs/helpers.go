@@ -28,9 +28,10 @@ func open(dir *File, name string) (*File, error) {
 		return open(d, filepath.Join(parts[1:]...))
 	}
 
-	fil, ok := dir.entries[name]
-	if !ok {
-		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	for _, fil := range dir.entries {
+		if fil.Name() == name {
+			return fil, nil
+		}
 	}
-	return fil, nil
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }

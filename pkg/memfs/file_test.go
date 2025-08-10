@@ -209,6 +209,23 @@ func Test_NewRoot(t *testing.T) {
 	assert.Nil(t, have.entries)
 }
 
+func Test_NewBuffer(t *testing.T) {
+	// --- Given ---
+	content := make([]byte, 3, 42)
+	copy(content, []byte{1, 2, 3})
+
+	// --- When ---
+	have := NewBuffer(content)
+
+	// --- Then ---
+	assert.Equal(t, 0, have.flag)
+	assert.Equal(t, 0, have.off)
+	assert.Cap(t, 42, have.buf)
+	assert.Equal(t, "memfile", have.info.name)
+	assert.Equal(t, fs.FileMode(0600), have.info.mode)
+	assert.Equal(t, []byte{1, 2, 3}, have.buf)
+}
+
 func Test_File_AddFile(t *testing.T) {
 	t.Run("add a file", func(t *testing.T) {
 		// --- Given ---
@@ -220,7 +237,10 @@ func Test_File_AddFile(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have, _ := assert.HasKey(t, "file", dir.entries)
+		assert.Len(t, 1, dir.entries)
+
+		have := dir.entries[0]
+		assert.Equal(t, "file", have.info.name)
 		assert.Same(t, fil, have)
 		assert.Same(t, fil.parent, dir)
 		assert.Equal(t, "file", fil.info.name)
@@ -236,10 +256,9 @@ func Test_File_AddFile(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		have, _ := assert.HasKey(t, "sub", dir.entries)
-		assert.Same(t, sub, have)
+		assert.Len(t, 1, dir.entries)
+		assert.Same(t, sub, dir.entries[0])
 		assert.Same(t, sub.parent, dir)
-		assert.Equal(t, "sub", sub.info.name)
 	})
 
 	t.Run("add a directory with files", func(t *testing.T) {
@@ -300,8 +319,8 @@ func Test_File_AddFile(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrExist, err)
-		have, _ := assert.HasKey(t, "file", dir.entries)
-		assert.Same(t, fil, have)
+		assert.Len(t, 1, dir.entries)
+		assert.Same(t, fil, dir.entries[0])
 	})
 
 	t.Run("error - unsupported type", func(t *testing.T) {
@@ -315,7 +334,7 @@ func Test_File_AddFile(t *testing.T) {
 
 		// --- Then ---
 		assert.ErrorIs(t, fs.ErrInvalid, err)
-		assert.HasNoKey(t, "file", dir.entries)
+		assert.Len(t, 0, dir.entries)
 	})
 
 	t.Run("error - cannot add file to file", func(t *testing.T) {

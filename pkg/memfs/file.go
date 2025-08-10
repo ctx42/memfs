@@ -5,10 +5,10 @@ package memfs
 
 import (
 	"bytes"
+	"cmp"
 	"errors"
 	"io"
 	"io/fs"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -75,13 +75,13 @@ var (
 
 // A File is a variable-sized buffer of bytes representing a file or directory.
 type File struct {
-	off     int              // Current offset for read and write operations.
-	buf     []byte           // Underlying buffer.
-	flag    int              // Instance flags.
-	info    FileInfo         // The file or directory information.
-	parent  *File            // Parent directory (nil for the root directory).
-	cursor  int              // Used as [File.ReadDir] cursor.
-	entries map[string]*File // Entries when the file represents a directory.
+	off     int      // Current offset for read and write operations.
+	buf     []byte   // Underlying buffer.
+	flag    int      // Instance flags.
+	info    FileInfo // The file or directory information.
+	parent  *File    // Parent directory (nil for the root directory).
+	cursor  int      // Used as [File.ReadDir] cursor.
+	entries []*File  // Entries when the file represents a directory.
 }
 
 // NewFile returns a new instance of [File] with an initial capacity of
@@ -138,6 +138,20 @@ func NewRoot() *File {
 	return &File{info: FileInfo{size: 4096, mode: 0700 | os.ModeDir}}
 }
 
+// NewBuffer returns a new instance of [File] with the name "memfile" and
+// content initialized with the given content. The caller must not use the
+// content slice after passing it to this function.
+func NewBuffer(content []byte) *File {
+	return &File{
+		buf: content,
+		info: FileInfo{
+			name: "memfile",
+			size: int64(len(content)),
+			mode: 0600,
+		},
+	}
+}
+
 // AddFile adds a file to the directory. Returns [fs.ErrExist] if the file by
 // that name already exists, [fs.ErrInvalid] if the file is not a regular file
 // or a directory. Returns [fs.ErrInvalid] if the file name is a path.
@@ -164,14 +178,17 @@ func (fil *File) AddFile(file *File) error {
 		return fs.ErrInvalid
 	}
 
-	name := file.Name()
-	if _, ok := fil.entries[name]; ok {
+	var found *File
+	for _, f := range fil.entries {
+		if f.Name() == file.Name() {
+			found = f
+			break
+		}
+	}
+	if found != nil {
 		return fs.ErrExist
 	}
-	if fil.entries == nil {
-		fil.entries = make(map[string]*File)
-	}
-	fil.entries[name] = file
+	fil.entries = append(fil.entries, file)
 	file.parent = fil
 	return nil
 }
@@ -186,10 +203,9 @@ func (fil *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 	}
 
-	var names []string
-	for _, name := range slices.Sorted(maps.Keys(fil.entries)) {
-		names = append(names, name)
-	}
+	slices.SortFunc(fil.entries, func(a, b *File) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
 
 	// If n <= 0, return all remaining entries.
 	if n <= 0 {
@@ -209,7 +225,7 @@ func (fil *File) ReadDir(n int) ([]fs.DirEntry, error) {
 
 	ets := make([]fs.DirEntry, 0, end-fil.cursor)
 	for i := fil.cursor; i < end; i++ {
-		file := fil.entries[names[i]]
+		file := fil.entries[i]
 		info, err := file.Stat()
 		if err != nil {
 			return nil, err
@@ -837,9 +853,10 @@ func (f fsDir) open(name string) (*File, error) {
 
 // Stat implements [fs.StatFS] interface.
 func (f fsDir) Stat(name string) (fs.FileInfo, error) {
-	fil, ok := f.dir.entries[name]
-	if !ok {
-		return nil, &fs.PathError{Op: "statat", Path: name, Err: syscall.ENOENT}
+	for _, fil := range f.dir.entries {
+		if fil.Name() == name {
+			return fil, nil
+		}
 	}
-	return fil.Stat()
+	return nil, &fs.PathError{Op: "statat", Path: name, Err: syscall.ENOENT}
 }
