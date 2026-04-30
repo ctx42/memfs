@@ -1,3 +1,6 @@
+## v0.2.1 (Thu, 30 Apr 2026 16:30:56 UTC)
+- chore: update dependencies.
+
 ## v0.2.0 (Sun, 10 Aug 2025 14:47:29 UTC)
 - feat: Add memfs.NewBuffer constructor function.
 
