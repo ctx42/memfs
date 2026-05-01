@@ -1,5 +1,5 @@
 module github.com/ctx42/memfs
 
-go 1.24
+go 1.26
 
-require github.com/ctx42/testing v0.46.0
+require github.com/ctx42/testing v0.47.0
