@@ -225,6 +225,9 @@ func (fil *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		file := fil.entries[i]
 		info, err := file.Stat()
 		if err != nil {
+			// (*File).Stat never returns an error today, but the
+			// guard is kept so that if it ever does, ReadDir propagates
+			// it correctly rather than silently dropping it.
 			return nil, err
 		}
 		ets = append(ets, fs.FileInfoToDirEntry(info))
