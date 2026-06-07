@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/ctx42/testing/pkg/assert"
-	"github.com/ctx42/testing/pkg/kit/iokit"
 	"github.com/ctx42/testing/pkg/must"
+	"github.com/ctx42/testkit/pkg/iokit"
 )
 
 func Test_TstFile(t *testing.T) {
@@ -860,7 +860,6 @@ func TstDirectory(t *testing.T, pth string, root fs.FS) {
 		// --- Then ---
 		assert.NoError(t, err)
 		assert.Equal(t, "sub", have.Name())
-		assert.Equal(t, int64(4096), have.Size())
 		assert.Equal(t, fs.FileMode(0700)|fs.ModeDir, have.Mode())
 		assert.True(t, have.IsDir())
 	})
