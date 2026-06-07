@@ -218,10 +218,7 @@ func (fil *File) ReadDir(n int) ([]fs.DirEntry, error) {
 	}
 
 	// Calculate how many entries to return.
-	end := fil.cursor + n
-	if end > len(fil.entries) {
-		end = len(fil.entries)
-	}
+	end := min(fil.cursor+n, len(fil.entries))
 
 	ets := make([]fs.DirEntry, 0, end-fil.cursor)
 	for i := fil.cursor; i < end; i++ {
