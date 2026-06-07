@@ -16,7 +16,7 @@ var bufferWrite int
 func BenchmarkFileWrite(b *testing.B) {
 	data := make([]byte, 1<<15)
 
-	b.Run("fskit", func(b *testing.B) {
+	b.Run("memfs", func(b *testing.B) {
 		b.ReportAllocs()
 		b.StopTimer()
 		var n int
@@ -47,7 +47,7 @@ func BenchmarkFileWrite(b *testing.B) {
 var bufferWriteByte error
 
 func BenchmarkFileWriteByte(b *testing.B) {
-	b.Run("fskit", func(b *testing.B) {
+	b.Run("memfs", func(b *testing.B) {
 		b.ReportAllocs()
 		b.StopTimer()
 		var err error
@@ -78,7 +78,7 @@ func BenchmarkFileWriteByte(b *testing.B) {
 var bufferWriteString int
 
 func BenchmarkFileWriteString(b *testing.B) {
-	b.Run("fskit", func(b *testing.B) {
+	b.Run("memfs", func(b *testing.B) {
 		b.ReportAllocs()
 		b.StopTimer()
 		var n int
@@ -111,7 +111,7 @@ var bufferReadFrom int64
 func BenchmarkFileReadFrom(b *testing.B) {
 	data := make([]byte, 1<<15)
 
-	b.Run("fskit", func(b *testing.B) {
+	b.Run("memfs", func(b *testing.B) {
 		b.ReportAllocs()
 		b.StopTimer()
 		var n int64

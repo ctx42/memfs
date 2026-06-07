@@ -1,7 +1,8 @@
 # memfs
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/ctx42/memfs?status.svg)](https://pkg.go.dev/github.com/ctx42/memfs)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Go Report Card](https://goreportcard.com/badge/github.com/ctx42/memfs)](https://goreportcard.com/report/github.com/ctx42/memfs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/ctx42/memfs)](https://goreportcard.com/report/github.com/ctx42/memfs)
 
 **memfs** is a lightweight, in-memory file system implementation in Go,
 designed for efficient file and directory operations without disk I/O. It

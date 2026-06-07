@@ -2085,6 +2085,24 @@ func Test_File_Seek(t *testing.T) {
 		assert.Equal(t, syscall.EISDIR, e.Err)
 		assert.Equal(t, int64(0), have)
 	})
+
+	t.Run("error - invalid whence", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2})
+		must.Value(fil.Seek(1, io.SeekStart))
+
+		// --- When ---
+		have, err := fil.Seek(0, 99)
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "seek", e.Op)
+		assert.Equal(t, "file", e.Path)
+		assert.Equal(t, syscall.EINVAL, e.Err)
+		assert.Equal(t, int64(0), have)
+		assert.Equal(t, 1, fil.Offset()) // offset must be unchanged
+	})
 }
 
 func Test_File_Seek_tabular(t *testing.T) {

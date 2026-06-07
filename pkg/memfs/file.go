@@ -98,7 +98,7 @@ func NewFile(name string, opts ...func(*File)) (*File, error) {
 // set the initial size of the internal buffer for writing. To do that, the
 // content slice should have the desired capacity but a length of zero. It will
 // panic with [ErrOutOfBounds] if the [WithFileOffset] option sets the offset
-// to a negative number or beyond sata slice length.
+// to a negative number or beyond data slice length.
 func FileWith(name string, content []byte, opts ...func(*File)) (*File, error) {
 	if !fs.ValidPath(name) || strings.Contains(name, "/") {
 		return nil, fs.ErrInvalid
@@ -152,9 +152,9 @@ func NewBuffer(content []byte) *File {
 	}
 }
 
-// AddFile adds a file to the directory. Returns [fs.ErrExist] if the file by
-// that name already exists, [fs.ErrInvalid] if the file is not a regular file
-// or a directory. Returns [fs.ErrInvalid] if the file name is a path.
+// AddFile adds a file to the directory. Returns [fs.ErrExist] if a file with
+// the same name already exists, [fs.ErrInvalid] if the entry is neither a
+// regular file nor a directory.
 func (fil *File) AddFile(file *File) error {
 	if !fil.IsDir() {
 		return &fs.PathError{
@@ -251,10 +251,10 @@ func (fil *File) ReadFile(name string) ([]byte, error) {
 // Name implements [fs.DirEntry].
 func (fil *File) Name() string { return fil.info.Name() }
 
-// IsDir implements [fs.DirEntry] and always returns false
+// IsDir implements [fs.DirEntry].
 func (fil *File) IsDir() bool { return fil.info.IsDir() }
 
-// Type implements [fs.DirEntry] and always returns 0 for the regular file.
+// Type implements [fs.DirEntry].
 func (fil *File) Type() fs.FileMode { return fil.info.Type() }
 
 // Stat returns information about the in-memory file, the size is the length of
@@ -583,6 +583,12 @@ func (fil *File) Seek(offset int64, whence int) (int64, error) {
 		off = fil.off + int(offset)
 	case io.SeekEnd:
 		off = len(fil.buf) + int(offset)
+	default:
+		return 0, &fs.PathError{
+			Op:   "seek",
+			Path: fil.path(),
+			Err:  syscall.EINVAL,
+		}
 	}
 
 	if off < 0 {
@@ -628,7 +634,7 @@ func (fil *File) Truncate(size int64) error {
 	}
 
 	if size < 0 {
-		return &os.PathError{
+		return &fs.PathError{
 			Op:   "truncate",
 			Path: fil.path(),
 			Err:  syscall.EINVAL,
