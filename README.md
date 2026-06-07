@@ -75,6 +75,7 @@ go get github.com/ctx42/memfs
 
 ### Creating an Empty File
 
+<!-- gmdoceg:ExampleNewFile -->
 ```go
 fil, _ := memfs.NewFile("file")
 
@@ -91,6 +92,7 @@ fmt.Println(content)
 
 ### Creating a File With Content
 
+<!-- gmdoceg:ExampleFileWith -->
 ```go
 fil, _ := memfs.FileWith("file", []byte{0, 1, 2, 3})
 
@@ -106,6 +108,7 @@ fmt.Println(content)
 
 ### Append Mode
 
+<!-- gmdoceg:ExampleFileWith_appendMode -->
 ```go
 fil, _ := memfs.FileWith("file", []byte{0, 1, 2, 3}, memfs.WithFileAppend)
 
@@ -121,17 +124,18 @@ fmt.Println(content)
 
 ### Creating a Directory and Adding Files
 
+<!-- gmdoceg:ExampleNewDirectory -->
 ```go
 fil0, _ := memfs.FileWith("file0", []byte{0})
 fil1, _ := memfs.FileWith("file1", []byte{1})
-dir := memfs.NewDirectory("dir")
+dir, _ := memfs.NewDirectory("dir")
 _ = dir.AddFile(fil0)
 _ = dir.AddFile(fil1)
 
 entries, _ := dir.ReadDir(-1)
 for _, entry := range entries {
-    info, _ := entry.Info()
-    fmt.Println(fs.FormatFileInfo(info))
+	info, _ := entry.Info()
+	fmt.Println(fs.FormatFileInfo(info))
 }
 
 // Output:
