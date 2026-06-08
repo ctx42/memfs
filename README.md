@@ -1,7 +1,7 @@
 # memfs
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/ctx42/memfs?status.svg)](https://pkg.go.dev/github.com/ctx42/memfs)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ctx42/memfs)](https://goreportcard.com/report/github.com/ctx42/memfs)
 
 **memfs** is a lightweight, in-memory file system implementation in Go,
@@ -14,7 +14,7 @@ integrable with existing Go file system APIs.
 The file and directory behavior mimic the `os` package as closely as possible -
 see tests in [compare_test.go](pkg/memfs/compare_test.go) file.
 
-The workhorse of the package is the `memfs.File` type which is used to represent 
+The workhorse of the package is the `memfs.File` type which is used to represent
 files or directories and implements a lot of useful interfaces.
 
 ## Key Features
@@ -61,8 +61,8 @@ where persistence is not required.
 **Portability and Simplicity**: Pure Go implementation with no external
   dependencies beyond the standard library. Easy to embed in any Go project.
 
-This package excels in testing frameworks (e.g., mocking file systems), 
-embedded systems, or applications requiring ephemeral storage, offering a 
+This package excels in testing frameworks (e.g., mocking file systems),
+embedded systems, or applications requiring ephemeral storage, offering a
 robust alternative to disk-based file systems like `os.DirFS`.
 
 ## Installation
