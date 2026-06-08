@@ -82,6 +82,7 @@ type File struct {
 	parent  *File    // Parent directory (nil for the root directory).
 	cursor  int      // Used as [File.ReadDir] cursor.
 	entries []*File  // Entries when the file represents a directory.
+	sorted  bool     // True when entries are in sorted order.
 }
 
 // NewFile returns a new instance of [File] with an initial capacity of
@@ -190,6 +191,7 @@ func (fil *File) AddFile(file *File) error {
 	}
 	fil.entries = append(fil.entries, file)
 	file.parent = fil
+	fil.sorted = false
 	return nil
 }
 
@@ -203,9 +205,12 @@ func (fil *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 	}
 
-	slices.SortFunc(fil.entries, func(a, b *File) int {
-		return cmp.Compare(a.Name(), b.Name())
-	})
+	if !fil.sorted {
+		slices.SortFunc(fil.entries, func(a, b *File) int {
+			return cmp.Compare(a.Name(), b.Name())
+		})
+		fil.sorted = true
+	}
 
 	// If n <= 0, return all remaining entries.
 	if n <= 0 {
@@ -338,8 +343,25 @@ func (fil *File) WriteByte(b byte) error {
 			Err:  syscall.EISDIR,
 		}
 	}
-	fil.write([]byte{b})
+	fil.writeByte(b)
 	return nil
+}
+
+// writeByte writes a single byte to the underlying buffer at the current
+// offset. Inlined equivalent of write([]byte{b}) that avoids constructing
+// a temporary slice and replaces copy with a direct index assignment.
+func (fil *File) writeByte(b byte) {
+	if fil.flag&os.O_APPEND != 0 {
+		fil.off = len(fil.buf)
+	}
+	l := len(fil.buf)
+	fil.grow(1)
+	fil.buf[fil.off] = b
+	fil.off++
+	if fil.off > l {
+		l = fil.off
+	}
+	fil.buf = fil.buf[:l]
 }
 
 // WriteAt writes len(p) bytes to the underlying buffer starting at the current
