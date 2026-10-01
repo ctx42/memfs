@@ -205,6 +205,26 @@ func (fil *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		}
 	}
 
+	// If n <= 0, return all remaining entries; at the end that is an empty
+	// slice and no error. If n > 0, the end is reported with io.EOF.
+	if n <= 0 {
+		n = len(fil.entries) - fil.cursor
+	} else if fil.cursor >= len(fil.entries) {
+		return nil, io.EOF
+	}
+
+	end := min(fil.cursor+n, len(fil.entries))
+	ets, err := fil.dirEntries(fil.cursor, end)
+	if err != nil {
+		return nil, err
+	}
+	fil.cursor = end
+	return ets, nil
+}
+
+// dirEntries returns the directory entries in the [from, to) range of the
+// entries sorted by name.
+func (fil *File) dirEntries(from, to int) ([]fs.DirEntry, error) {
 	if !fil.sorted {
 		slices.SortFunc(fil.entries, func(a, b *File) int {
 			return cmp.Compare(a.Name(), b.Name())
@@ -212,32 +232,17 @@ func (fil *File) ReadDir(n int) ([]fs.DirEntry, error) {
 		fil.sorted = true
 	}
 
-	// If n <= 0, return all remaining entries.
-	if n <= 0 {
-		n = len(fil.entries) - fil.cursor
-	}
-
-	// Check if we've reached the end.
-	if fil.cursor >= len(fil.entries) {
-		return nil, io.EOF
-	}
-
-	// Calculate how many entries to return.
-	end := min(fil.cursor+n, len(fil.entries))
-
-	ets := make([]fs.DirEntry, 0, end-fil.cursor)
-	for i := fil.cursor; i < end; i++ {
-		file := fil.entries[i]
-		info, err := file.Stat()
+	ets := make([]fs.DirEntry, 0, to-from)
+	for _, ent := range fil.entries[from:to] {
+		info, err := ent.Stat()
 		if err != nil {
 			// (*File).Stat never returns an error today, but the
-			// guard is kept so that if it ever does, ReadDir propagates
-			// it correctly rather than silently dropping it.
+			// guard is kept so that if it ever does, it is propagated
+			// correctly rather than silently dropped.
 			return nil, err
 		}
 		ets = append(ets, fs.FileInfoToDirEntry(info))
 	}
-	fil.cursor = end
 	return ets, nil
 }
 
@@ -780,12 +785,14 @@ func (fil *File) path() string {
 	return pth
 }
 
-// Close sets offset to zero. It always returns nil error.
+// Close sets the offset and the [File.ReadDir] position to zero. It always
+// returns nil error.
 func (fil *File) Close() error {
 	if fil == nil {
 		return nil
 	}
 	fil.off = 0
+	fil.cursor = 0
 	return nil
 }
 
@@ -854,7 +861,7 @@ func (f fsDir) ReadDir(name string) ([]fs.DirEntry, error) {
 			Err:  syscall.ENOTDIR,
 		}
 	}
-	return fil.ReadDir(-1)
+	return fil.dirEntries(0, len(fil.entries))
 }
 
 // Open implements [fs.FS] interface.

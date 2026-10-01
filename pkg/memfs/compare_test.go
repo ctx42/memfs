@@ -889,6 +889,18 @@ func TstDirectory(t *testing.T, pth string, root fs.FS) {
 		assert.Equal(t, "sub2", have[2].Name())
 	})
 
+	t.Run("ReadDir - read twice", func(t *testing.T) {
+		// --- Given ---
+		_ = must.Value(fs.ReadDir(root, "sub"))
+
+		// --- When ---
+		have, err := fs.ReadDir(root, "sub")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 3, have)
+	})
+
 	t.Run("ReadDir - an existing sub directory", func(t *testing.T) {
 		// --- When ---
 		have, err := fs.ReadDir(root, "sub/sub2")

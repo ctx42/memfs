@@ -393,8 +393,9 @@ func Test_File_ReadDir(t *testing.T) {
 		have, err = dir.ReadDir(-1)
 
 		// --- Then ---
-		assert.ErrorIs(t, io.EOF, err)
-		assert.Nil(t, have)
+		assert.NoError(t, err)
+		assert.NotNil(t, have)
+		assert.Len(t, 0, have)
 	})
 
 	t.Run("success - arg zero returns all", func(t *testing.T) {
@@ -418,8 +419,9 @@ func Test_File_ReadDir(t *testing.T) {
 		have, err = dir.ReadDir(-1)
 
 		// --- Then ---
-		assert.ErrorIs(t, io.EOF, err)
-		assert.Nil(t, have)
+		assert.NoError(t, err)
+		assert.NotNil(t, have)
+		assert.Len(t, 0, have)
 	})
 
 	t.Run("success - arg less than the number of entries", func(t *testing.T) {
@@ -525,6 +527,36 @@ func Test_File_ReadDir(t *testing.T) {
 		assert.Equal(t, "file", e.Path)
 		assert.Equal(t, syscall.ENOTDIR, e.Err)
 		assert.Nil(t, have)
+	})
+
+	t.Run("empty directory", func(t *testing.T) {
+		// --- Given ---
+		dir := MustDirectory("dir")
+
+		// --- When ---
+		have, err := dir.ReadDir(-1)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.NotNil(t, have)
+		assert.Len(t, 0, have)
+	})
+
+	t.Run("close resets the position", func(t *testing.T) {
+		// --- Given ---
+		dir := MustDirectory("dir")
+		must.Nil(dir.AddFile(MustFileWith("file0", []byte("file0"))))
+		must.Nil(dir.AddFile(MustFileWith("file1", []byte("file1"))))
+		_ = must.Value(dir.ReadDir(1))
+		must.Nil(dir.Close())
+
+		// --- When ---
+		have, err := dir.ReadDir(-1)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 2, have)
+		assert.Equal(t, "file0", have[0].Name())
 	})
 }
 
@@ -2828,6 +2860,32 @@ func Test_File_List(t *testing.T) {
 		assert.Equal(t, syscall.ENOTDIR, e.Err)
 		assert.Empty(t, have)
 	})
+
+	t.Run("list twice", func(t *testing.T) {
+		// --- Given ---
+		dir := tstDirMem()
+		_ = must.Value(dir.List())
+
+		// --- When ---
+		have, err := dir.List()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, wantList, have)
+	})
+
+	t.Run("empty directory", func(t *testing.T) {
+		// --- Given ---
+		dir := NewRoot()
+		must.Nil(dir.AddFile(MustDirectory("empty")))
+
+		// --- When ---
+		have, err := dir.List()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, ".\nempty\n", have)
+	})
 }
 
 func Test_zeroOutSlice(t *testing.T) {
@@ -2911,6 +2969,34 @@ func Test_fsDir_ReadDir(t *testing.T) {
 		assert.Equal(t, "/root", e.Path)
 		assert.Equal(t, fs.ErrInvalid, e.Err)
 		assert.Nil(t, have)
+	})
+
+	t.Run("read twice", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+		_ = must.Value(dir.ReadDir("sub"))
+
+		// --- When ---
+		have, err := dir.ReadDir("sub")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Len(t, 3, have)
+	})
+
+	t.Run("empty directory", func(t *testing.T) {
+		// --- Given ---
+		root := NewRoot()
+		must.Nil(root.AddFile(MustDirectory("empty")))
+		dir := fsDir{root}
+
+		// --- When ---
+		have, err := dir.ReadDir("empty")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.NotNil(t, have)
+		assert.Len(t, 0, have)
 	})
 }
 
