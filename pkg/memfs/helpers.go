@@ -5,7 +5,6 @@ package memfs
 
 import (
 	"io/fs"
-	"path/filepath"
 	"strings"
 )
 
@@ -19,13 +18,14 @@ func open(dir *File, name string) (*File, error) {
 		return dir, nil
 	}
 
-	parts := strings.Split(name, string(filepath.Separator))
-	if len(parts) > 1 {
-		d, err := open(dir, parts[0])
+	// Paths in the io/fs package always use forward slashes.
+	first, rest, nested := strings.Cut(name, "/")
+	if nested {
+		d, err := open(dir, first)
 		if err != nil {
 			return nil, err
 		}
-		return open(d, filepath.Join(parts[1:]...))
+		return open(d, rest)
 	}
 
 	for _, fil := range dir.entries {
