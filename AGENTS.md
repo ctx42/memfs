@@ -38,11 +38,10 @@ top of `file.go`).
 A lightweight value type embedded in `File` that implements `fs.FileInfo` and
 `fs.DirEntry`. `ModTime` always returns zero; `Sys` always returns nil.
 
-**`fsOnly` / `fsDir`** (`memfs.go`, `file.go`)
-Two thin wrappers around `*File` that expose restricted interface subsets.
-`fsOnly` prevents infinite recursion when `fs` helpers call back into `Open`.
-`fsDir` is what `File.FS()` returns — it implements `fs.StatFS`,
-`fs.ReadFileFS`, and `fs.ReadDirFS`.
+**`fsDir`** (`file.go`)
+A thin wrapper around a directory `*File`, returned by `File.FS()`. It
+implements `fs.StatFS`, `fs.ReadFileFS`, and `fs.ReadDirFS` without changing
+file offsets or the directory's `ReadDir` position.
 
 **`helpers.go`**
 Contains the `open` function that walks the directory tree recursively,
@@ -63,7 +62,8 @@ is generated via `go generate`.
 
 ## Key design rules
 
-- `File.Close()` resets the offset to zero (it does not free the buffer).
+- `File.Close()` resets the offset and the `ReadDir` position to zero (it does
+  not free the buffer).
 - `File.Release()` transfers ownership of the buffer to the caller; the instance
   must not be used afterwards.
 - `NewRoot()` creates a nameless directory for use as a filesystem root (no path

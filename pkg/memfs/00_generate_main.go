@@ -14,7 +14,7 @@ func main() {
 		mocker.WithTgtOnHelpers,
 	}
 	mocks := []func(opts ...mocker.Option) error{
-		GenFsFSMock,
+		genFsFSMock,
 	}
 	for _, mock := range mocks {
 		if err := mock(opts...); err != nil {
@@ -23,7 +23,7 @@ func main() {
 	}
 }
 
-func GenFsFSMock(opts ...mocker.Option) error {
+func genFsFSMock(opts ...mocker.Option) error {
 	opts = append(
 		opts,
 		mocker.WithSrc("io/fs"),

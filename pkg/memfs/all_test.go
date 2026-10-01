@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
-	"testing"
 
 	"github.com/ctx42/testing/pkg/must"
 	"github.com/ctx42/testing/pkg/tester"
@@ -94,7 +93,8 @@ func createKitFile(t tester.T, flag int, content []byte) file {
 //	  file0 [file0]
 //	  file1 [file1]
 //	  file2 [file2]
-func tstDirOS(t *testing.T) string {
+func tstDirOS(t tester.T) string {
+	t.Helper()
 	dir := filepath.Join(t.TempDir(), "dir")
 	sub := filepath.Join(dir, "sub")
 	sub2 := filepath.Join(sub, "sub2")

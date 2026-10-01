@@ -458,7 +458,7 @@ func TstFile(t *testing.T, create fileCreator) {
 		assert.Equal(t, []byte{0, 1, 2, 0}, dst)
 	})
 
-	t.Run("ReadAt - read all - buffer length equal content", func(t *testing.T) {
+	t.Run("ReadAt - read all - buffer as long as content", func(t *testing.T) {
 		// --- Given ---
 		fil := create(t, os.O_RDWR, []byte{0, 1, 2})
 		dst := make([]byte, 3)
@@ -588,7 +588,7 @@ func TstFile(t *testing.T, create fileCreator) {
 		assert.Equal(t, []byte{2}, must.Value(io.ReadAll(fil)))
 	})
 
-	t.Run("Seek - SeekEnd negative offset to the beginning", func(t *testing.T) {
+	t.Run("Seek - SeekEnd negative offset to the start", func(t *testing.T) {
 		// --- Given ---
 		fil := create(t, os.O_RDWR, []byte{0, 1, 2})
 
@@ -823,15 +823,14 @@ func TstFile(t *testing.T, create fileCreator) {
 		fil := create(t, os.O_RDWR, []byte{0, 1, 2})
 
 		// --- When ---
-		fi, err := fil.Stat()
+		have, err := fil.Stat()
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		assert.Equal(t, int64(3), fi.Size())
-		assert.False(t, fi.IsDir())
-		assert.Equal(t, "file.txt", fi.Name())
-		assert.Equal(t, fs.FileMode(0600), fi.Mode())
+		assert.Equal(t, int64(3), have.Size())
+		assert.False(t, have.IsDir())
+		assert.Equal(t, "file.txt", have.Name())
+		assert.Equal(t, fs.FileMode(0600), have.Mode())
 	})
 
 	t.Run("Stat - O_RDWR and O_APPEND", func(t *testing.T) {
@@ -839,15 +838,14 @@ func TstFile(t *testing.T, create fileCreator) {
 		fil := create(t, os.O_RDWR|os.O_APPEND, []byte{0, 1, 2})
 
 		// --- When ---
-		fi, err := fil.Stat()
+		have, err := fil.Stat()
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		assert.Equal(t, int64(3), fi.Size())
-		assert.False(t, fi.IsDir())
-		assert.Equal(t, "file.txt", fi.Name())
-		assert.Equal(t, fs.FileMode(0600), fi.Mode())
+		assert.Equal(t, int64(3), have.Size())
+		assert.False(t, have.IsDir())
+		assert.Equal(t, "file.txt", have.Name())
+		assert.Equal(t, fs.FileMode(0600), have.Mode())
 	})
 
 	t.Run("Stat - size changed", func(t *testing.T) {
@@ -856,15 +854,14 @@ func TstFile(t *testing.T, create fileCreator) {
 		must.Value(fil.Write([]byte{3, 4}))
 
 		// --- When ---
-		fi, err := fil.Stat()
+		have, err := fil.Stat()
 
 		// --- Then ---
 		assert.NoError(t, err)
-
-		assert.Equal(t, int64(5), fi.Size())
-		assert.False(t, fi.IsDir())
-		assert.Equal(t, "file.txt", fi.Name())
-		assert.Equal(t, fs.FileMode(0600), fi.Mode())
+		assert.Equal(t, int64(5), have.Size())
+		assert.False(t, have.IsDir())
+		assert.Equal(t, "file.txt", have.Name())
+		assert.Equal(t, fs.FileMode(0600), have.Mode())
 	})
 }
 

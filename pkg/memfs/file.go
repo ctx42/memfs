@@ -20,14 +20,7 @@ import (
 // smallBufferSize is an initial allocation minimal capacity.
 const smallBufferSize = 64
 
-// ErrOutOfBounds is returned for invalid offsets.
-var ErrOutOfBounds = errors.New("offset out of bounds")
-
-// ErrHasParent is returned when an instance of [File] which is already a
-// child of another instance is added to a directory.
-var ErrHasParent = errors.New("entry already has a parent")
-
-// errWriteAtInAppendMode returned when [File.WriteAt] is used with a
+// errWriteAtInAppendMode is returned when [File.WriteAt] is used with a
 // [os.O_APPEND] flag. It has the same message as the error with the same name
 // in the os package.
 var errWriteAtInAppendMode = errors.New("os: invalid use of WriteAt on file " +
@@ -43,15 +36,14 @@ func WithFileOffset(off int) func(*File) {
 	return func(fil *File) { fil.off = off }
 }
 
-// WithFileAppend is a [File] constructor function option setting the offset to
-// the end of the file. This option must be the last option on the option list.
-//
-// When [File.Truncate] is used, the offset will be set to the end of the
-// [File].
+// WithFileAppend is a [File] constructor function option enabling the append
+// mode: every write goes to the end of the file, whatever the offset. It adds
+// the [os.O_APPEND] flag, so it must come after [WithFileFlag], which replaces
+// all flags.
 func WithFileAppend(fil *File) { fil.flag |= os.O_APPEND }
 
-// WithFileFlag is a [File] constructor function option setting flags. Flags
-// are the same as for [os.OpenFile].
+// WithFileFlag is a [File] constructor function option setting flags, which
+// replaces any flags set before it. Flags are the same as for [os.OpenFile].
 //
 // Currently, only the [os.O_APPEND] flag is supported.
 func WithFileFlag(flag int) func(*File) {
@@ -408,10 +400,10 @@ func (fil *File) writeByte(b byte) {
 	fil.buf = fil.buf[:l]
 }
 
-// WriteAt writes len(p) bytes to the underlying buffer starting at the current
-// offset. It returns the number of bytes written; err is returned only when
-// the file was opened with an [os.O_APPEND] flag or the file represents a
-// directory. It does not change the offset.
+// WriteAt writes len(p) bytes to the underlying buffer starting at offset
+// off. It returns the number of bytes written; err is returned only when the
+// file was opened with an [os.O_APPEND] flag, off is negative, or the file
+// represents a directory. It does not change the offset.
 func (fil *File) WriteAt(p []byte, off int64) (n int, err error) {
 	if fil.IsDir() {
 		return 0, &fs.PathError{
@@ -474,7 +466,7 @@ func (fil *File) WriteTo(w io.Writer) (int64, error) {
 
 // WriteString writes string s to the buffer at the current offset.
 func (fil *File) WriteString(s string) (int, error) {
-	return fil.Write([]byte(s)) // nolint: gocritic
+	return fil.Write([]byte(s)) //nolint:gocritic
 }
 
 // write writes p at the current offset.
@@ -537,10 +529,10 @@ func (fil *File) ReadByte() (byte, error) {
 	return v, nil
 }
 
-// ReadAt reads len(p) bytes from the buffer at the current offset. It returns
+// ReadAt reads len(p) bytes from the buffer starting at offset off. It returns
 // the number of bytes read and the error, if any. ReadAt always returns a
-// non-nil error when n < len(p) or when the file represents a directory. It
-// does not change the offset.
+// non-nil error when n < len(p), when off is negative, or when the file
+// represents a directory. It does not change the offset.
 func (fil *File) ReadAt(p []byte, off int64) (int, error) {
 	if fil.IsDir() {
 		return 0, &fs.PathError{
@@ -634,7 +626,7 @@ func (fil *File) ReadFrom(r io.Reader) (int64, error) {
 	}
 
 	// The [io.EOF] is not an error.
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		err = nil
 	}
 
@@ -713,10 +705,9 @@ func (fil *File) SeekEnd() int64 {
 }
 
 // Truncate changes the size of the buffer discarding bytes at the offsets
-// greater than size. It does not change the offset unless a [WithFileAppend]
-// option was used, then it sets the offset to the end of the buffer. Returns
-// an error only when the size is negative. The error is of the [fs.PathError]
-// type.
+// greater than size. It does not change the offset. Returns an error only when
+// the size is negative or the file represents a directory. The error is of
+// the [fs.PathError] type.
 func (fil *File) Truncate(size int64) error {
 	if fil.IsDir() {
 		return &fs.PathError{
@@ -794,7 +785,7 @@ func (fil *File) Grow(n int) {
 // grow grows the buffer's capacity to guarantee space for n more bytes. In
 // other words, it makes sure there are n bytes between the current offset and
 // the buffer capacity. It's worth noting that after calling this method the
-// len(b.buf) changes. If the buffer can't grow, it will panic with
+// length of the buffer changes. If the buffer can't grow, it will panic with
 // [bytes.ErrTooLarge].
 func (fil *File) grow(n int) {
 	// Try to grow by a reslice.
@@ -907,7 +898,7 @@ func makeSlice(n int) []byte {
 	return make([]byte, n)
 }
 
-// fsDir wraps instance of [Directory] and implements the following interfaces:
+// fsDir wraps a directory [File] and implements the following interfaces:
 //
 //   - [io/fs.StatFS],
 //   - [io/fs.ReadFileFS],
@@ -915,8 +906,8 @@ func makeSlice(n int) []byte {
 type fsDir struct{ dir *File }
 
 // ReadDir implements [fs.ReadDirFS] interface.
-func (f fsDir) ReadDir(name string) ([]fs.DirEntry, error) {
-	fil, err := f.open(name)
+func (fsd fsDir) ReadDir(name string) ([]fs.DirEntry, error) {
+	fil, err := fsd.open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -924,7 +915,7 @@ func (f fsDir) ReadDir(name string) ([]fs.DirEntry, error) {
 	if !fil.IsDir() {
 		return nil, &fs.PathError{
 			Op:   "readdirent",
-			Path: filepath.Join(f.dir.info.name, name),
+			Path: filepath.Join(fsd.dir.info.name, name),
 			Err:  syscall.ENOTDIR,
 		}
 	}
@@ -933,8 +924,8 @@ func (f fsDir) ReadDir(name string) ([]fs.DirEntry, error) {
 
 // ReadFile implements [fs.ReadFileFS] interface. It returns the whole file
 // content regardless of the file offset and does not change the offset.
-func (f fsDir) ReadFile(name string) ([]byte, error) {
-	fil, err := f.open(name)
+func (fsd fsDir) ReadFile(name string) ([]byte, error) {
+	fil, err := fsd.open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -942,12 +933,12 @@ func (f fsDir) ReadFile(name string) ([]byte, error) {
 }
 
 // Open implements [fs.FS] interface.
-func (f fsDir) Open(name string) (fs.File, error) { return f.open(name) }
+func (fsd fsDir) Open(name string) (fs.File, error) { return fsd.open(name) }
 
 // open opens the file with the given name and handles errors in a way that
 // matches the behavior of [os.Open] and [os.OpenFile].
-func (f fsDir) open(name string) (*File, error) {
-	fil, err := open(f.dir, name)
+func (fsd fsDir) open(name string) (*File, error) {
+	fil, err := open(fsd.dir, name)
 	if err != nil {
 		var e *fs.PathError
 		if errors.As(err, &e) {
@@ -965,8 +956,8 @@ func (f fsDir) open(name string) (*File, error) {
 }
 
 // Stat implements [fs.StatFS] interface.
-func (f fsDir) Stat(name string) (fs.FileInfo, error) {
-	fil, err := f.open(name)
+func (fsd fsDir) Stat(name string) (fs.FileInfo, error) {
+	fil, err := fsd.open(name)
 	if err != nil {
 		var e *fs.PathError
 		if errors.As(err, &e) {

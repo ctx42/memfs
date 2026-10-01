@@ -583,7 +583,7 @@ func Test_File_ReadDir(t *testing.T) {
 	})
 }
 
-func Test_Directory_ReadFile(t *testing.T) {
+func Test_File_ReadFile(t *testing.T) {
 	t.Run("read an existing file", func(t *testing.T) {
 		// --- Given ---
 		dir := MustDirectory("dir")
@@ -807,7 +807,6 @@ func Test_File_Info(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-
 		assert.Equal(t, "dir", have.Name())
 		assert.Equal(t, int64(4096), have.Size())
 		assert.Equal(t, fs.FileMode(0700)|fs.ModeDir, have.Mode())
@@ -1179,11 +1178,11 @@ func Test_File_Write_tabular(t *testing.T) {
 			}
 
 			// --- When ---
-			n, err := fil.Write(tc.src)
+			have, err := fil.Write(tc.src)
 
 			// --- Then ---
 			assert.NoError(t, err)
-			assert.Equal(t, tc.wN, n)
+			assert.Equal(t, tc.wN, have)
 
 			assert.Equal(t, tc.wOff, fil.Offset())
 			assert.Equal(t, tc.wLen, fil.Len())
@@ -1321,11 +1320,11 @@ func Test_File_WriteAt(t *testing.T) {
 		fil := &File{}
 
 		// --- When ---
-		n, err := fil.WriteAt([]byte{0, 1, 2}, 0)
+		have, err := fil.WriteAt([]byte{0, 1, 2}, 0)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 3, n)
+		assert.Equal(t, 3, have)
 		assert.Equal(t, 0, fil.Offset())
 		assert.Equal(t, 3, fil.Len())
 		assert.Equal(t, 64, fil.Cap())
@@ -1340,11 +1339,11 @@ func Test_File_WriteAt(t *testing.T) {
 		data := bytes.Repeat([]byte{0, 1}, 500)
 
 		// --- When ---
-		n, err := fil.WriteAt(data, 1)
+		have, err := fil.WriteAt(data, 1)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 1000, n)
+		assert.Equal(t, 1000, have)
 		assert.Equal(t, 0, fil.Offset())
 		assert.Equal(t, 1001, fil.Len())
 		assert.Equal(t, 1004, fil.Cap())
@@ -1358,11 +1357,11 @@ func Test_File_WriteAt(t *testing.T) {
 		fil := MustFileWith("file", []byte{0, 1, 2})
 
 		// --- When ---
-		n, err := fil.WriteAt([]byte{3, 4, 5}, 1000)
+		have, err := fil.WriteAt([]byte{3, 4, 5}, 1000)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 3, n)
+		assert.Equal(t, 3, have)
 		assert.Equal(t, 0, fil.Offset())
 		assert.Equal(t, 1003, fil.Len())
 		assert.Equal(t, 1006, fil.Cap())
@@ -1377,11 +1376,11 @@ func Test_File_WriteAt(t *testing.T) {
 		fil := MustFileWith("file", []byte{0, 1, 2}, WithFileAppend)
 
 		// --- When ---
-		n, err := fil.WriteAt([]byte{3}, 1)
+		have, err := fil.WriteAt([]byte{3}, 1)
 
 		// --- Then ---
 		assert.ErrorIs(t, errWriteAtInAppendMode, err)
-		assert.Equal(t, 0, n)
+		assert.Equal(t, 0, have)
 		assert.Equal(t, []byte{0, 1, 2}, fil.buf)
 		assert.NoError(t, fil.Close())
 	})
@@ -1556,11 +1555,11 @@ func Test_File_WriteAt_tabular(t *testing.T) {
 			}
 
 			// --- When ---
-			n, err := fil.WriteAt(tc.src, tc.off)
+			have, err := fil.WriteAt(tc.src, tc.off)
 
 			// --- Then ---
 			assert.NoError(t, err)
-			assert.Equal(t, tc.wN, n)
+			assert.Equal(t, tc.wN, have)
 			assert.Equal(t, tc.wOff, fil.Offset())
 			assert.Equal(t, tc.wLen, fil.Len())
 			assert.Equal(t, tc.wCap, fil.Cap())
@@ -1655,11 +1654,11 @@ func Test_File_WriteString(t *testing.T) {
 		fil := MustFileWith("file", []byte{0, 1, 2}, WithFileOffset(1))
 
 		// --- When ---
-		n, err := fil.WriteString("abc")
+		have, err := fil.WriteString("abc")
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 3, n)
+		assert.Equal(t, 3, have)
 		assert.Equal(t, []byte{0, 0x61, 0x62, 0x63}, fil.buf)
 		assert.Equal(t, 4, fil.Offset())
 	})
@@ -1688,11 +1687,11 @@ func Test_File_Read(t *testing.T) {
 		dst := make([]byte, 3)
 
 		// --- When ---
-		n, err := fil.Read(dst)
+		have, err := fil.Read(dst)
 
 		// --- Then ---
 		assert.ErrorIs(t, err, io.EOF)
-		assert.Equal(t, 0, n)
+		assert.Equal(t, 0, have)
 		assert.Equal(t, 0, fil.Offset())
 		assert.Equal(t, 0, fil.Len())
 		assert.Equal(t, 0, fil.Cap())
@@ -1709,30 +1708,30 @@ func Test_File_Read(t *testing.T) {
 		// --- Then ---
 
 		// First read.
-		n, err := fil.Read(dst)
+		have, err := fil.Read(dst)
 
 		assert.NoError(t, err)
-		assert.Equal(t, 3, n)
+		assert.Equal(t, 3, have)
 		assert.Equal(t, 3, fil.Offset())
 		assert.Equal(t, 5, fil.Len())
 		assert.Equal(t, 5, fil.Cap())
 		assert.Equal(t, []byte{0, 1, 2}, dst)
 
 		// Second read.
-		n, err = fil.Read(dst)
+		have, err = fil.Read(dst)
 
 		assert.NoError(t, err)
-		assert.Equal(t, 2, n)
+		assert.Equal(t, 2, have)
 		assert.Equal(t, 5, fil.Offset())
 		assert.Equal(t, 5, fil.Len())
 		assert.Equal(t, 5, fil.Cap())
 		assert.Equal(t, []byte{3, 4, 2}, dst)
 
 		// Third read.
-		n, err = fil.Read(dst)
+		have, err = fil.Read(dst)
 
 		assert.ErrorIs(t, err, io.EOF)
-		assert.Equal(t, 0, n)
+		assert.Equal(t, 0, have)
 		assert.Equal(t, 5, fil.Offset())
 		assert.Equal(t, 5, fil.Len())
 		assert.Equal(t, 5, fil.Cap())
@@ -1746,11 +1745,11 @@ func Test_File_Read(t *testing.T) {
 		dst := make([]byte, 6)
 
 		// --- When ---
-		n, err := fil.Read(dst)
+		have, err := fil.Read(dst)
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 3, n)
+		assert.Equal(t, 3, have)
 		assert.Equal(t, 3, fil.Offset())
 		assert.Equal(t, 3, fil.Len())
 		assert.Equal(t, 3, fil.Cap())
@@ -1765,11 +1764,11 @@ func Test_File_Read(t *testing.T) {
 		dst := make([]byte, 3)
 
 		// --- When ---
-		n, err := fil.Read(dst)
+		have, err := fil.Read(dst)
 
 		// --- Then ---
 		assert.ErrorIs(t, err, io.EOF)
-		assert.Equal(t, 0, n)
+		assert.Equal(t, 0, have)
 		assert.Equal(t, 5, fil.Offset())
 		assert.Equal(t, 3, fil.Len())
 		assert.Equal(t, 3, fil.Cap())
@@ -1866,11 +1865,11 @@ func Test_File_Read_tabular(t *testing.T) {
 			fil := MustFileWith("file", tc.content, tc.opts...)
 
 			// --- When ---
-			n, err := fil.Read(tc.dst)
+			have, err := fil.Read(tc.dst)
 
 			// --- Then ---
 			assert.NoError(t, err)
-			assert.Equal(t, tc.wN, n)
+			assert.Equal(t, tc.wN, have)
 			assert.Equal(t, tc.wOff, fil.Offset())
 			assert.Equal(t, tc.wLen, fil.Len())
 			assert.Equal(t, tc.wCap, fil.Cap())
@@ -2229,7 +2228,10 @@ func Test_File_ReadFrom_tabular(t *testing.T) {
 			wOff:    3*1<<9 + 25,
 			wLen:    3*1<<9 + 25,
 			wCap:    3984,
-			wBuf:    append(bytes.Repeat([]byte{0}, 25), bytes.Repeat([]byte{1, 2, 3}, 1<<9)...),
+			wBuf: append(
+				bytes.Repeat([]byte{0}, 25),
+				bytes.Repeat([]byte{1, 2, 3}, 1<<9)...,
+			),
 		},
 	}
 
@@ -2412,10 +2414,10 @@ func Test_File_SeekStart(t *testing.T) {
 	fil := MustFileWith("file", []byte{0, 1, 2}, WithFileOffset(2))
 
 	// --- When ---
-	n := fil.SeekStart()
+	have := fil.SeekStart()
 
 	// --- Then ---
-	assert.Equal(t, int64(2), n)
+	assert.Equal(t, int64(2), have)
 	assert.Equal(t, 0, fil.off)
 }
 
@@ -2424,10 +2426,10 @@ func Test_File_SeekEnd(t *testing.T) {
 	fil := MustFileWith("file", []byte{0, 1, 2}, WithFileOffset(1))
 
 	// --- When ---
-	n := fil.SeekEnd()
+	have := fil.SeekEnd()
 
 	// --- Then ---
-	assert.Equal(t, int64(1), n)
+	assert.Equal(t, int64(1), have)
 	assert.Equal(t, len(fil.buf), fil.off)
 }
 
@@ -2517,11 +2519,11 @@ func Test_File_Truncate(t *testing.T) {
 		must.Nil(fil.Truncate(4))
 
 		// --- When ---
-		n, err := fil.Write([]byte{4, 5})
+		have, err := fil.Write([]byte{4, 5})
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 2, n)
+		assert.Equal(t, 2, have)
 		assert.Equal(t, 6, fil.Offset())
 		assert.Equal(t, 6, fil.Len())
 		assert.Equal(t, 10, fil.Cap())
@@ -3103,7 +3105,7 @@ func Test_fsDir_ReadDir(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 3, len(have))
+		assert.Len(t, 3, have)
 		assert.Equal(t, "file3", have[0].Name())
 		assert.Equal(t, "file4", have[1].Name())
 		assert.Equal(t, "sub2", have[2].Name())
@@ -3118,7 +3120,7 @@ func Test_fsDir_ReadDir(t *testing.T) {
 
 		// --- Then ---
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(have))
+		assert.Len(t, 2, have)
 		assert.Equal(t, "file5", have[0].Name())
 		assert.Equal(t, "file6", have[1].Name())
 	})
@@ -3280,7 +3282,7 @@ func Test_fsDir_Open(t *testing.T) {
 	})
 }
 
-func Test_fdDir_Stat(t *testing.T) {
+func Test_fsDir_Stat(t *testing.T) {
 	t.Run("file", func(t *testing.T) {
 		// --- Given ---
 		dir := fsDir{tstDirMem()}
