@@ -872,7 +872,8 @@ func list(root fs.FS) (string, error) {
 		out += path + "\n"
 		return nil
 	}
-	return out, fs.WalkDir(root, ".", fn)
+	err := fs.WalkDir(root, ".", fn)
+	return out, err
 }
 
 // zeroOutSlice zeroes out the byte slice.
