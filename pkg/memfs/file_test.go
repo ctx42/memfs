@@ -601,8 +601,7 @@ func Test_Directory_ReadFile(t *testing.T) {
 		assert.Equal(t, "read", e.Op)
 		assert.Equal(t, "dir/sub", e.Path)
 		assert.Equal(t, syscall.EISDIR, e.Err)
-		assert.NotNil(t, have)
-		assert.Len(t, 0, have)
+		assert.Nil(t, have)
 	})
 
 	t.Run("error - can be called only on directories", func(t *testing.T) {
@@ -619,6 +618,22 @@ func Test_Directory_ReadFile(t *testing.T) {
 		assert.Equal(t, "file", e.Path)
 		assert.Equal(t, syscall.ENOTDIR, e.Err)
 		assert.Nil(t, have)
+	})
+
+	t.Run("ignores the file offset", func(t *testing.T) {
+		// --- Given ---
+		dir := MustDirectory("dir")
+		fil := MustFile("file0")
+		_ = must.Value(fil.WriteString("abc"))
+		must.Nil(dir.AddFile(fil))
+
+		// --- When ---
+		have, err := dir.ReadFile("file0")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("abc"), have)
+		assert.Equal(t, 3, fil.Offset())
 	})
 }
 
@@ -3019,6 +3034,56 @@ func Test_fsDir_ReadDir(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, have)
 		assert.Len(t, 0, have)
+	})
+}
+
+func Test_fsDir_ReadFile(t *testing.T) {
+	t.Run("ignores the file offset", func(t *testing.T) {
+		// --- Given ---
+		root := tstDirMem()
+		fil := must.Value(open(root, "sub/file3"))
+		_ = fil.SeekEnd()
+		dir := fsDir{root}
+
+		// --- When ---
+		have, err := dir.ReadFile("sub/file3")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("file3"), have)
+		assert.Equal(t, 5, fil.Offset())
+	})
+
+	t.Run("error - not existing", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.ReadFile("not-existing")
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "openat", e.Op)
+		assert.Equal(t, "not-existing", e.Path)
+		assert.Equal(t, syscall.ENOENT, e.Err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - directory", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.ReadFile("sub")
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "read", e.Op)
+		assert.Equal(t, "sub", e.Path)
+		assert.Equal(t, syscall.EISDIR, e.Err)
+		assert.Nil(t, have)
 	})
 }
 

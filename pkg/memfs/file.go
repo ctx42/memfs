@@ -71,6 +71,10 @@ var (
 	_ fs.FS          = &File{}
 	_ fs.ReadDirFile = &File{}
 	_ fs.ReadFileFS  = &File{}
+
+	_ fs.ReadDirFS  = fsDir{}
+	_ fs.ReadFileFS = fsDir{}
+	_ fs.StatFS     = fsDir{}
 )
 
 // A File is a variable-sized buffer of bytes representing a file or directory.
@@ -246,7 +250,8 @@ func (fil *File) dirEntries(from, to int) ([]fs.DirEntry, error) {
 	return ets, nil
 }
 
-// ReadFile implements [fs.ReadFileFS] interface.
+// ReadFile implements [fs.ReadFileFS] interface. It returns the whole file
+// content regardless of the file offset and does not change the offset.
 func (fil *File) ReadFile(name string) ([]byte, error) {
 	if !fil.IsDir() {
 		return nil, &fs.PathError{
@@ -255,7 +260,24 @@ func (fil *File) ReadFile(name string) ([]byte, error) {
 			Err:  syscall.ENOTDIR,
 		}
 	}
-	return fs.ReadFile(fsOnly{fil}, name)
+	ent, err := open(fil, name)
+	if err != nil {
+		return nil, err
+	}
+	return ent.content()
+}
+
+// content returns a copy of the whole file content. Returns an error when the
+// instance represents a directory.
+func (fil *File) content() ([]byte, error) {
+	if fil.IsDir() {
+		return nil, &fs.PathError{
+			Op:   "read",
+			Path: fil.path(),
+			Err:  syscall.EISDIR,
+		}
+	}
+	return append([]byte{}, fil.buf...), nil
 }
 
 // Name implements [fs.DirEntry].
@@ -862,6 +884,16 @@ func (f fsDir) ReadDir(name string) ([]fs.DirEntry, error) {
 		}
 	}
 	return fil.dirEntries(0, len(fil.entries))
+}
+
+// ReadFile implements [fs.ReadFileFS] interface. It returns the whole file
+// content regardless of the file offset and does not change the offset.
+func (f fsDir) ReadFile(name string) ([]byte, error) {
+	fil, err := f.open(name)
+	if err != nil {
+		return nil, err
+	}
+	return fil.content()
 }
 
 // Open implements [fs.FS] interface.
