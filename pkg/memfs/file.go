@@ -95,8 +95,8 @@ type File struct {
 }
 
 // NewFile returns a new instance of [File] with an initial capacity of
-// [bytes.MinRead]. It will panic with [ErrOutOfBounds] if the [WithFileOffset]
-// option sets offset to a negative number or greater than [bytes.MinRead].
+// [bytes.MinRead]. It returns [ErrOutOfBounds] if the [WithFileOffset] option
+// sets a non-zero offset, since the new file is empty.
 func NewFile(name string, opts ...func(*File)) (*File, error) {
 	return FileWith(name, make([]byte, 0, bytes.MinRead), opts...)
 }
@@ -106,9 +106,9 @@ func NewFile(name string, opts ...func(*File)) (*File, error) {
 // not use it after passing it to this function. FileWith is intended to
 // prepare the [File] instance to read existing data. It can also be used to
 // set the initial size of the internal buffer for writing. To do that, the
-// content slice should have the desired capacity but a length of zero. It will
-// panic with [ErrOutOfBounds] if the [WithFileOffset] option sets the offset
-// to a negative number or beyond data slice length.
+// content slice should have the desired capacity but a length of zero. It
+// returns [ErrOutOfBounds] if the [WithFileOffset] option sets the offset to
+// a negative number or beyond the content length.
 func FileWith(name string, content []byte, opts ...func(*File)) (*File, error) {
 	if !fs.ValidPath(name) || strings.Contains(name, "/") {
 		return nil, fs.ErrInvalid
@@ -125,7 +125,7 @@ func FileWith(name string, content []byte, opts ...func(*File)) (*File, error) {
 		opt(fil)
 	}
 	if fil.off < 0 || fil.off > len(fil.buf) {
-		panic(ErrOutOfBounds)
+		return nil, ErrOutOfBounds
 	}
 	return fil, nil
 }

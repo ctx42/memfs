@@ -76,26 +76,22 @@ func Test_NewFile(t *testing.T) {
 		assert.Cap(t, bytes.MinRead, have.buf)
 	})
 
-	t.Run("panic - out-of-bounds error", func(t *testing.T) {
-		// --- Given ---
-		fn := func() { _, _ = NewFile("file", WithFileOffset(bytes.MinRead+1)) }
-
+	t.Run("error - offset beyond length", func(t *testing.T) {
 		// --- When ---
-		msg := assert.PanicMsg(t, fn)
+		have, err := NewFile("file", WithFileOffset(1))
 
 		// --- Then ---
-		assert.Equal(t, "offset out of bounds", *msg)
+		assert.ErrorIs(t, ErrOutOfBounds, err)
+		assert.Nil(t, have)
 	})
 
-	t.Run("panic - negative offset", func(t *testing.T) {
-		// --- Given ---
-		fn := func() { _, _ = NewFile("file", WithFileOffset(-1)) }
-
+	t.Run("error - negative offset", func(t *testing.T) {
 		// --- When ---
-		msg := assert.PanicMsg(t, fn)
+		have, err := NewFile("file", WithFileOffset(-1))
 
 		// --- Then ---
-		assert.Equal(t, "offset out of bounds", *msg)
+		assert.ErrorIs(t, ErrOutOfBounds, err)
+		assert.Nil(t, have)
 	})
 }
 
@@ -143,36 +139,28 @@ func Test_FileWith(t *testing.T) {
 		assert.Nil(t, fil)
 	})
 
-	t.Run("panic - out-of-bounds error", func(t *testing.T) {
+	t.Run("error - offset beyond length", func(t *testing.T) {
 		// --- Given ---
 		content := make([]byte, 42, 44)
 
-		// --- Given ---
-		fn := func() {
-			_, _ = FileWith("file", content, WithFileOffset(43))
-		}
-
 		// --- When ---
-		msg := assert.PanicMsg(t, fn)
+		have, err := FileWith("file", content, WithFileOffset(43))
 
 		// --- Then ---
-		assert.Equal(t, "offset out of bounds", *msg)
+		assert.ErrorIs(t, ErrOutOfBounds, err)
+		assert.Nil(t, have)
 	})
 
-	t.Run("panic - negative offset", func(t *testing.T) {
+	t.Run("error - negative offset", func(t *testing.T) {
 		// --- Given ---
 		content := make([]byte, 42, 44)
 
-		// --- Given ---
-		fn := func() {
-			_, _ = FileWith("file", content, WithFileOffset(-1))
-		}
-
 		// --- When ---
-		msg := assert.PanicMsg(t, fn)
+		have, err := FileWith("file", content, WithFileOffset(-1))
 
 		// --- Then ---
-		assert.Equal(t, "offset out of bounds", *msg)
+		assert.ErrorIs(t, ErrOutOfBounds, err)
+		assert.Nil(t, have)
 	})
 }
 
