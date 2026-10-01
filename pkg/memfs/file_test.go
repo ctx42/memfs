@@ -1907,6 +1907,57 @@ func Test_File_ReadFrom(t *testing.T) {
 		assert.Equal(t, syscall.EISDIR, e.Err)
 		assert.Equal(t, int64(0), have)
 	})
+
+	t.Run("read longer than the content after the offset", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFile("file")
+		_ = must.Value(fil.Write(bytes.Repeat([]byte{1}, 1000)))
+		_ = fil.SeekStart()
+		src := make([]byte, 2000)
+		for i := range src {
+			src[i] = byte(i % 251)
+		}
+		rdr := bytes.NewReader(src)
+
+		// --- When ---
+		have, err := fil.ReadFrom(rdr)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, int64(2000), have)
+		assert.Equal(t, 2000, fil.Offset())
+		assert.Equal(t, src, fil.buf)
+	})
+
+	t.Run("reader scratch space is zeroed", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFile("file")
+		rdr := &scratchReader{data: []byte{1, 2, 3}}
+
+		// --- When ---
+		have, err := fil.ReadFrom(rdr)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, int64(3), have)
+		want := append([]byte{1, 2, 3}, make([]byte, fil.Cap()-3)...)
+		assert.Equal(t, want, fil.buf[:fil.Cap()])
+	})
+
+	t.Run("scratch space is zeroed when overwriting", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", make([]byte, 10, 1024))
+		rdr := &scratchReader{data: []byte{1, 2, 3}}
+
+		// --- When ---
+		have, err := fil.ReadFrom(rdr)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, int64(3), have)
+		want := append([]byte{1, 2, 3}, make([]byte, 1021)...)
+		assert.Equal(t, want, fil.buf[:fil.Cap()])
+	})
 }
 
 func Test_File_ReadFrom_tabular(t *testing.T) {

@@ -531,23 +531,20 @@ func (fil *File) ReadFrom(r io.Reader) (int64, error) {
 		// the new buffer length.
 		fil.grow(bytes.MinRead)
 
-		// We will use bytes between l and cap(fil.buf) as a temporary scratch
-		// space for reading from r and then slide read bytes to place. We have
-		// to do it this way because [io.Read] documentation says that: "Even
-		// if Read returns n < len(p), it may use all of p as scratch space
-		// during the call." so we can't pass our buffer to Read because it
-		// might change parts of it not involved in the read operation.
-		tmp := fil.buf[l:cap(fil.buf)]
+		// We will use bytes past both l and the offset, up to cap(fil.buf), as
+		// a temporary scratch space for reading from r and then slide read
+		// bytes to place. We have to do it this way because [io.Read]
+		// documentation says that: "Even if Read returns n < len(p), it may
+		// use all of p as scratch space during the call." so we can't pass our
+		// buffer to Read because it might change parts of it not involved in
+		// the read operation.
+		start := max(l, fil.off)
+		tmp := fil.buf[start:cap(fil.buf)]
 		n, err = r.Read(tmp)
 
-		if l != fil.off {
+		if start != fil.off {
 			// Move bytes from temporary area to correct place.
-			copy(fil.buf[fil.off:], tmp[:n])
-			if n < len(tmp) {
-				// Clean up any garbage the reader might put in there. We want
-				// to keep all bytes between len and cap as zeros.
-				zeroOutSlice(tmp[n:])
-			}
+			copy(fil.buf[fil.off:cap(fil.buf)], tmp[:n])
 		}
 
 		fil.off += n
@@ -559,6 +556,10 @@ func (fil *File) ReadFrom(r io.Reader) (int64, error) {
 
 		// Set proper buffer length.
 		fil.buf = fil.buf[:l]
+
+		// Clean up any garbage the reader might put in the scratch space. We
+		// want to keep all bytes between len and cap as zeros.
+		clear(fil.buf[l:cap(fil.buf)])
 
 		if err != nil {
 			break

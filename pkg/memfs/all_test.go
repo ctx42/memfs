@@ -130,3 +130,23 @@ func tstDirMem() *File {
 
 	return dir
 }
+
+// scratchReader is an [io.Reader] returning all its data with [io.EOF] in a
+// single read and filling the rest of the read buffer with 0xFF, which the
+// [io.Reader] contract allows.
+type scratchReader struct{ data []byte }
+
+func (scr *scratchReader) Read(p []byte) (int, error) {
+	if len(scr.data) == 0 {
+		return 0, io.EOF
+	}
+	n := copy(p, scr.data)
+	scr.data = scr.data[n:]
+	for i := n; i < len(p); i++ {
+		p[i] = 0xFF
+	}
+	if len(scr.data) == 0 {
+		return n, io.EOF
+	}
+	return n, nil
+}
