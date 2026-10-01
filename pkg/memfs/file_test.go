@@ -370,6 +370,40 @@ func Test_File_AddFile(t *testing.T) {
 		assert.Equal(t, "dir0/file", e.Path)
 		assert.Equal(t, ErrHasParent, e.Err)
 	})
+
+	t.Run("error - add a directory to itself", func(t *testing.T) {
+		// --- Given ---
+		dir := MustDirectory("dir")
+
+		// --- When ---
+		err := dir.AddFile(dir)
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "AddFile", e.Op)
+		assert.Equal(t, "dir", e.Path)
+		assert.Equal(t, fs.ErrInvalid, e.Err)
+		assert.Len(t, 0, dir.entries)
+	})
+
+	t.Run("error - add an ancestor", func(t *testing.T) {
+		// --- Given ---
+		dir := MustDirectory("dir")
+		sub := MustDirectory("sub")
+		must.Nil(dir.AddFile(sub))
+
+		// --- When ---
+		err := sub.AddFile(dir)
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "AddFile", e.Op)
+		assert.Equal(t, "dir", e.Path)
+		assert.Equal(t, fs.ErrInvalid, e.Err)
+		assert.Len(t, 0, sub.entries)
+	})
 }
 
 func Test_File_ReadDir(t *testing.T) {

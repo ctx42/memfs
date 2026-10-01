@@ -164,7 +164,8 @@ func NewBuffer(content []byte) *File {
 
 // AddFile adds a file to the directory. Returns [fs.ErrExist] if a file with
 // the same name already exists, [fs.ErrInvalid] if the entry is neither a
-// regular file nor a directory.
+// regular file nor a directory, or if it is the directory itself or one of
+// its ancestors.
 func (fil *File) AddFile(file *File) error {
 	if !fil.IsDir() {
 		return &fs.PathError{
@@ -179,6 +180,17 @@ func (fil *File) AddFile(file *File) error {
 			Op:   "AddFile",
 			Path: file.path(),
 			Err:  ErrHasParent,
+		}
+	}
+
+	// Adding the directory itself or one of its ancestors creates a cycle.
+	for anc := fil; anc != nil; anc = anc.parent {
+		if anc == file {
+			return &fs.PathError{
+				Op:   "AddFile",
+				Path: file.path(),
+				Err:  fs.ErrInvalid,
+			}
 		}
 	}
 
