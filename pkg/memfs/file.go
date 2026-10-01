@@ -421,21 +421,23 @@ func (fil *File) WriteAt(p []byte, off int64) (n int, err error) {
 		}
 	}
 
-	prev := fil.off
-	c := cap(fil.buf)
-	pl := len(p)
-
-	// Handle writing beyond capacity.
-	if int(off)+pl > c {
-		fil.off = c // So tryGrowByReslice returns false.
-		fil.grow(int(off) + pl - len(fil.buf))
-		fil.buf = fil.buf[:int(off)+pl]
+	end := int(off) + len(p)
+	if end > cap(fil.buf) {
+		// Grow the same way [File.grow] does, relative to the length.
+		n := end - len(fil.buf)
+		if fil.buf == nil && n <= smallBufferSize {
+			fil.buf = make([]byte, 0, smallBufferSize)
+		} else {
+			tmp := makeSlice(cap(fil.buf)*2 + n)
+			copy(tmp, fil.buf)
+			fil.buf = tmp[:len(fil.buf)]
+		}
 	}
-
-	fil.off = int(off)
-	n = fil.write(p)
-	fil.off = prev
-	return n, nil
+	if end > len(fil.buf) {
+		// Bytes between the length and the capacity are always zero.
+		fil.buf = fil.buf[:end]
+	}
+	return copy(fil.buf[off:], p), nil
 }
 
 // WriteTo writes data to w starting at the current offset until there are no
@@ -542,14 +544,13 @@ func (fil *File) ReadAt(p []byte, off int64) (int, error) {
 			Err:  errNegativeOffset,
 		}
 	}
-
-	prev := fil.off
-	defer func() { fil.off = prev }()
-	fil.off = int(off)
-	n, err := fil.Read(p)
-	if err != nil {
-		return n, err
+	if off >= int64(len(fil.buf)) {
+		if len(p) == 0 {
+			return 0, nil
+		}
+		return 0, io.EOF
 	}
+	n := copy(p, fil.buf[off:])
 	if n < len(p) {
 		return n, io.EOF
 	}

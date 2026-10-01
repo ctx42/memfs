@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"sync"
 	"syscall"
 	"testing"
 
@@ -1961,6 +1962,23 @@ func Test_File_ReadAt(t *testing.T) {
 
 		assert.Equal(t, 0, have)
 		assert.Equal(t, []byte{0, 0, 0}, buf)
+	})
+
+	t.Run("parallel calls", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2, 3})
+		have := make([]byte, 4)
+
+		// --- When ---
+		var wg sync.WaitGroup
+		for i := range have {
+			wg.Go(func() { _, _ = fil.ReadAt(have[i:i+1], int64(i)) })
+		}
+		wg.Wait()
+
+		// --- Then ---
+		assert.Equal(t, []byte{0, 1, 2, 3}, have)
+		assert.Equal(t, 0, fil.Offset())
 	})
 
 	t.Run("error - negative offset", func(t *testing.T) {
