@@ -144,6 +144,37 @@ func TstFile(t *testing.T, create fileCreator) {
 		assert.Equal(t, want, iokit.ReadAllFromStart(fil))
 	})
 
+	t.Run("WriteAt - error - negative offset", func(t *testing.T) {
+		// --- Given ---
+		fil := create(t, os.O_RDWR, []byte{0, 1, 2})
+
+		// --- When ---
+		have, err := fil.WriteAt([]byte{3}, -1)
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "writeat", e.Op)
+		assert.ErrorEqual(t, "negative offset", e.Err)
+		assert.Equal(t, 0, have)
+	})
+
+	t.Run("ReadAt - error - negative offset", func(t *testing.T) {
+		// --- Given ---
+		fil := create(t, os.O_RDWR, []byte{0, 1, 2})
+		dst := make([]byte, 3)
+
+		// --- When ---
+		have, err := fil.ReadAt(dst, -1)
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "readat", e.Op)
+		assert.ErrorEqual(t, "negative offset", e.Err)
+		assert.Equal(t, 0, have)
+	})
+
 	t.Run("Read - empty buffer beyond the end", func(t *testing.T) {
 		// --- Given ---
 		fil := create(t, os.O_RDWR, []byte{0, 1, 2})

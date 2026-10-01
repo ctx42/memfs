@@ -33,6 +33,11 @@ var ErrHasParent = errors.New("entry already has a parent")
 var errWriteAtInAppendMode = errors.New("os: invalid use of WriteAt on file " +
 	"opened with O_APPEND")
 
+// errNegativeOffset is returned when [File.ReadAt] or [File.WriteAt] is used
+// with a negative offset. It has the same message as the error the os package
+// returns in that case.
+var errNegativeOffset = errors.New("negative offset")
+
 // WithFileOffset is a [File] constructor function option setting the offset.
 func WithFileOffset(off int) func(*File) {
 	return func(fil *File) { fil.off = off }
@@ -408,6 +413,14 @@ func (fil *File) WriteAt(p []byte, off int64) (n int, err error) {
 		return 0, errWriteAtInAppendMode
 	}
 
+	if off < 0 {
+		return 0, &fs.PathError{
+			Op:   "writeat",
+			Path: fil.path(),
+			Err:  errNegativeOffset,
+		}
+	}
+
 	prev := fil.off
 	c := cap(fil.buf)
 	pl := len(p)
@@ -522,6 +535,14 @@ func (fil *File) ReadAt(p []byte, off int64) (int, error) {
 			Err:  syscall.EISDIR,
 		}
 	}
+	if off < 0 {
+		return 0, &fs.PathError{
+			Op:   "readat",
+			Path: fil.path(),
+			Err:  errNegativeOffset,
+		}
+	}
+
 	prev := fil.off
 	defer func() { fil.off = prev }()
 	fil.off = int(off)

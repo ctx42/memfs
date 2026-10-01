@@ -1378,6 +1378,23 @@ func Test_File_WriteAt(t *testing.T) {
 		assert.Equal(t, syscall.EISDIR, e.Err)
 		assert.Equal(t, 0, have)
 	})
+
+	t.Run("error - negative offset", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2})
+
+		// --- When ---
+		have, err := fil.WriteAt([]byte{3}, -1)
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "writeat", e.Op)
+		assert.Equal(t, "file", e.Path)
+		assert.ErrorEqual(t, "negative offset", e.Err)
+		assert.Equal(t, 0, have)
+		assert.Equal(t, []byte{0, 1, 2}, fil.buf)
+	})
 }
 
 func Test_File_WriteAt_tabular(t *testing.T) {
@@ -1944,6 +1961,23 @@ func Test_File_ReadAt(t *testing.T) {
 
 		assert.Equal(t, 0, have)
 		assert.Equal(t, []byte{0, 0, 0}, buf)
+	})
+
+	t.Run("error - negative offset", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2})
+		dst := make([]byte, 3)
+
+		// --- When ---
+		have, err := fil.ReadAt(dst, -1)
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "readat", e.Op)
+		assert.Equal(t, "file", e.Path)
+		assert.ErrorEqual(t, "negative offset", e.Err)
+		assert.Equal(t, 0, have)
 	})
 }
 
