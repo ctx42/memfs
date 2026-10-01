@@ -945,6 +945,7 @@ func (fsd fsDir) open(name string) (*File, error) {
 			switch {
 			case errors.Is(err, fs.ErrNotExist):
 				e.Op = "openat"
+				e.Path = name
 				e.Err = syscall.ENOENT
 			default:
 				return nil, e

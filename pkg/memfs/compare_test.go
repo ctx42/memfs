@@ -1030,6 +1030,19 @@ func TstDirectory(t *testing.T, pth string, root fs.FS) {
 		assert.Nil(t, have)
 	})
 
+	t.Run("Open - error - deep not existing file", func(t *testing.T) {
+		// --- When ---
+		have, err := root.Open("sub/not-existing")
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "openat", e.Op)
+		assert.Equal(t, "sub/not-existing", e.Path)
+		assert.Equal(t, syscall.ENOENT, e.Err)
+		assert.Nil(t, have)
+	})
+
 	t.Run("Open - deep open file", func(t *testing.T) {
 		// --- When ---
 		have, err := root.Open("sub/file3")

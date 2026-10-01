@@ -583,6 +583,26 @@ func Test_File_ReadDir(t *testing.T) {
 	})
 }
 
+func Test_File_dirEntries(t *testing.T) {
+	// --- Given ---
+	dir := MustDirectory("dir")
+	must.Nil(dir.AddFile(MustFileWith("file2", []byte("file2"))))
+	must.Nil(dir.AddFile(MustFileWith("file0", []byte("file0"))))
+	must.Nil(dir.AddFile(MustFileWith("file1", []byte("file1"))))
+
+	// --- When ---
+	have, err := dir.dirEntries(1, 3)
+
+	// --- Then ---
+	assert.NoError(t, err)
+	assert.Len(t, 2, have)
+	assert.Equal(t, "file1", have[0].Name())
+	assert.Equal(t, "file2", have[1].Name())
+
+	assert.True(t, dir.sorted)
+	assert.Equal(t, 0, dir.cursor)
+}
+
 func Test_File_ReadFile(t *testing.T) {
 	t.Run("read an existing file", func(t *testing.T) {
 		// --- Given ---
@@ -657,6 +677,39 @@ func Test_File_ReadFile(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("abc"), have)
 		assert.Equal(t, 3, fil.Offset())
+	})
+}
+
+func Test_File_content(t *testing.T) {
+	t.Run("file", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2}, WithFileOffset(2))
+
+		// --- When ---
+		have, err := fil.content()
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{0, 1, 2}, have)
+		assert.NotSame(t, &fil.buf[0], &have[0])
+
+		assert.Equal(t, 2, fil.Offset())
+	})
+
+	t.Run("error - directory", func(t *testing.T) {
+		// --- Given ---
+		dir := MustDirectory("dir")
+
+		// --- When ---
+		have, err := dir.content()
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "read", e.Op)
+		assert.Equal(t, "dir", e.Path)
+		assert.Equal(t, syscall.EISDIR, e.Err)
+		assert.Nil(t, have)
 	})
 }
 
@@ -1314,6 +1367,37 @@ func Test_File_WriteByte_tabular(t *testing.T) {
 	}
 }
 
+func Test_File_writeByte(t *testing.T) {
+	t.Run("overwrite", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2}, WithFileOffset(1))
+
+		// --- When ---
+		fil.writeByte(9)
+
+		// --- Then ---
+		assert.Equal(t, 2, fil.Offset())
+		assert.Equal(t, []byte{0, 9, 2}, fil.buf)
+	})
+
+	t.Run("append mode", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith(
+			"file",
+			[]byte{0, 1, 2},
+			WithFileOffset(1),
+			WithFileAppend,
+		)
+
+		// --- When ---
+		fil.writeByte(9)
+
+		// --- Then ---
+		assert.Equal(t, 4, fil.Offset())
+		assert.Equal(t, []byte{0, 1, 2, 9}, fil.buf)
+	})
+}
+
 func Test_File_WriteAt(t *testing.T) {
 	t.Run("using zero value", func(t *testing.T) {
 		// --- Given ---
@@ -1680,6 +1764,41 @@ func Test_File_WriteString(t *testing.T) {
 	})
 }
 
+func Test_File_write(t *testing.T) {
+	t.Run("overwrite and extend", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2}, WithFileOffset(2))
+		src := []byte{8, 9}
+
+		// --- When ---
+		have := fil.write(src)
+
+		// --- Then ---
+		assert.Equal(t, 2, have)
+		assert.Equal(t, 4, fil.Offset())
+		assert.Equal(t, []byte{0, 1, 8, 9}, fil.buf)
+	})
+
+	t.Run("append mode", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith(
+			"file",
+			[]byte{0, 1, 2},
+			WithFileOffset(1),
+			WithFileAppend,
+		)
+		src := []byte{8, 9}
+
+		// --- When ---
+		have := fil.write(src)
+
+		// --- Then ---
+		assert.Equal(t, 2, have)
+		assert.Equal(t, 5, fil.Offset())
+		assert.Equal(t, []byte{0, 1, 2, 8, 9}, fil.buf)
+	})
+}
+
 func Test_File_Read(t *testing.T) {
 	t.Run("read zero value", func(t *testing.T) {
 		// --- Given ---
@@ -2016,6 +2135,19 @@ func Test_File_ReadAt(t *testing.T) {
 		assert.Equal(t, "readat", e.Op)
 		assert.Equal(t, "file", e.Path)
 		assert.ErrorEqual(t, "negative offset", e.Err)
+		assert.Equal(t, 0, have)
+	})
+
+	t.Run("empty buffer with offset beyond length", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2})
+		dst := make([]byte, 0)
+
+		// --- When ---
+		have, err := fil.ReadAt(dst, 5)
+
+		// --- Then ---
+		assert.NoError(t, err)
 		assert.Equal(t, 0, have)
 	})
 }
@@ -2719,6 +2851,21 @@ func Test_File_Grow(t *testing.T) {
 	})
 }
 
+func Test_File_grow(t *testing.T) {
+	t.Run("nil buffer", func(t *testing.T) {
+		// --- Given ---
+		fil := &File{}
+
+		// --- When ---
+		fil.grow(10)
+
+		// --- Then ---
+		assert.Equal(t, 0, fil.off)
+		assert.Equal(t, 10, fil.Len())
+		assert.Equal(t, smallBufferSize, fil.Cap())
+	})
+}
+
 func Test_File_grow_tabular(t *testing.T) {
 	tt := []struct {
 		testN string
@@ -2854,6 +3001,16 @@ func Test_File_tryGrowByReslice_tabular(t *testing.T) {
 			grow:  150,
 			wOK:   false,
 			wLen:  10,
+			wCap:  100,
+		},
+		{
+			testN: "6",
+			len:   20,
+			cap:   100,
+			off:   5,
+			grow:  10,
+			wOK:   true,
+			wLen:  20,
 			wCap:  100,
 		},
 	}
@@ -3074,6 +3231,35 @@ func Test_File_List(t *testing.T) {
 	})
 }
 
+func Test_list(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// --- Given ---
+		root := NewRoot()
+		must.Nil(root.AddFile(MustFile("file")))
+		fsys := root.FS()
+
+		// --- When ---
+		have, err := list(fsys)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, ".\nfile\n", have)
+	})
+
+	t.Run("error - walk fails", func(t *testing.T) {
+		// --- Given ---
+		mck := NewFSMock(t)
+		mck.OnOpen(".").Return(nil, fs.ErrNotExist)
+
+		// --- When ---
+		have, err := list(mck)
+
+		// --- Then ---
+		assert.ErrorIs(t, fs.ErrNotExist, err)
+		assert.Equal(t, "", have)
+	})
+}
+
 func Test_zeroOutSlice(t *testing.T) {
 	t.Run("slice", func(t *testing.T) {
 		// --- Given ---
@@ -3092,6 +3278,29 @@ func Test_zeroOutSlice(t *testing.T) {
 
 		// --- When ---
 		zeroOutSlice(data)
+	})
+}
+
+func Test_makeSlice(t *testing.T) {
+	t.Run("allocates", func(t *testing.T) {
+		// --- When ---
+		have := makeSlice(10)
+
+		// --- Then ---
+		assert.Len(t, 10, have)
+		assert.Cap(t, 10, have)
+	})
+
+	t.Run("panic - too large", func(t *testing.T) {
+		// --- Given ---
+		fn := func() { _ = makeSlice(-1) }
+
+		// --- When ---
+		msg := assert.PanicMsg(t, fn)
+
+		// --- Then ---
+		assert.NotNil(t, msg)
+		assert.Equal(t, bytes.ErrTooLarge.Error(), *msg)
 	})
 }
 
@@ -3278,6 +3487,52 @@ func Test_fsDir_Open(t *testing.T) {
 		assert.Equal(t, "openat", e.Op)
 		assert.Equal(t, "not-existing", e.Path)
 		assert.Equal(t, syscall.ENOENT, e.Err)
+		assert.Nil(t, have)
+	})
+}
+
+func Test_fsDir_open(t *testing.T) {
+	t.Run("file", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.open("sub/file3")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "file3", have.Name())
+	})
+
+	t.Run("error - not existing", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.open("sub/not-existing")
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "openat", e.Op)
+		assert.Equal(t, "sub/not-existing", e.Path)
+		assert.Equal(t, syscall.ENOENT, e.Err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("error - invalid path", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.open("/sub")
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "open", e.Op)
+		assert.Equal(t, "/sub", e.Path)
+		assert.Equal(t, fs.ErrInvalid, e.Err)
 		assert.Nil(t, have)
 	})
 }
