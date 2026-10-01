@@ -864,6 +864,17 @@ func TstDirectory(t *testing.T, pth string, root fs.FS) {
 		assert.True(t, have.IsDir())
 	})
 
+	t.Run("Stat - a nested file", func(t *testing.T) {
+		// --- When ---
+		have, err := fs.Stat(root, "sub/sub2/file5")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "file5", have.Name())
+		assert.Equal(t, int64(5), have.Size())
+		assert.False(t, have.IsDir())
+	})
+
 	t.Run("Stat - error - not existing file", func(t *testing.T) {
 		// --- When ---
 		have, err := fs.Stat(root, "not-existing")

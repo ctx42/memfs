@@ -806,7 +806,7 @@ func (fil *File) List() (string, error) {
 			Err:  syscall.ENOTDIR,
 		}
 	}
-	return list(fil)
+	return list(fsDir{dir: fil})
 }
 
 func list(root fs.FS) (string, error) {
@@ -889,10 +889,14 @@ func (f fsDir) open(name string) (*File, error) {
 
 // Stat implements [fs.StatFS] interface.
 func (f fsDir) Stat(name string) (fs.FileInfo, error) {
-	for _, fil := range f.dir.entries {
-		if fil.Name() == name {
-			return fil, nil
+	fil, err := f.open(name)
+	if err != nil {
+		var e *fs.PathError
+		if errors.As(err, &e) {
+			e.Op = "statat"
+			e.Path = name
 		}
+		return nil, err
 	}
-	return nil, &fs.PathError{Op: "statat", Path: name, Err: syscall.ENOENT}
+	return fil.Stat()
 }

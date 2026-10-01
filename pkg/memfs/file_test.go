@@ -935,6 +935,28 @@ func Test_File_FS(t *testing.T) {
 		// --- Then ---
 		assert.Nil(t, have)
 	})
+
+	t.Run("walk directory", func(t *testing.T) {
+		// --- Given ---
+		fsys := tstDirMem().FS()
+
+		var have []string
+		fn := func(path string, _ fs.DirEntry, err error) error {
+			have = append(have, path)
+			return err
+		}
+
+		// --- When ---
+		err := fs.WalkDir(fsys, ".", fn)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		want := []string{
+			".", "file0", "file1", "file2", "sub", "sub/file3", "sub/file4",
+			"sub/sub2", "sub/sub2/file5", "sub/sub2/file6",
+		}
+		assert.Equal(t, want, have)
+	})
 }
 
 func Test_File_Release(t *testing.T) {
@@ -3093,6 +3115,48 @@ func Test_fdDir_Stat(t *testing.T) {
 		assert.ErrorAs(t, &e, err)
 		assert.Equal(t, "statat", e.Op)
 		assert.Equal(t, "not-existing", e.Path)
+		assert.Equal(t, syscall.ENOENT, e.Err)
+		assert.Nil(t, have)
+	})
+
+	t.Run("dot", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.Stat(".")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.True(t, have.IsDir())
+	})
+
+	t.Run("nested file", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.Stat("sub/sub2/file5")
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, "file5", have.Name())
+		assert.Equal(t, int64(5), have.Size())
+		assert.False(t, have.IsDir())
+	})
+
+	t.Run("error - nested not existing", func(t *testing.T) {
+		// --- Given ---
+		dir := fsDir{tstDirMem()}
+
+		// --- When ---
+		have, err := dir.Stat("sub/not-existing")
+
+		// --- Then ---
+		var e *fs.PathError
+		assert.ErrorAs(t, &e, err)
+		assert.Equal(t, "statat", e.Op)
+		assert.Equal(t, "sub/not-existing", e.Path)
 		assert.Equal(t, syscall.ENOENT, e.Err)
 		assert.Nil(t, have)
 	})
