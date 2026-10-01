@@ -127,6 +127,37 @@ func TstFile(t *testing.T, create fileCreator) {
 		assert.Equal(t, []byte{}, must.Value(io.ReadAll(fil)))
 	})
 
+	t.Run("Write - seek far beyond the end", func(t *testing.T) {
+		// --- Given ---
+		fil := create(t, os.O_RDWR, []byte{0, 1, 2})
+		iokit.Seek(fil, 5000, io.SeekStart)
+
+		// --- When ---
+		have, err := fil.Write([]byte{9})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, 1, have)
+		assert.Equal(t, int64(5001), iokit.Offset(fil))
+		want := append([]byte{0, 1, 2}, make([]byte, 4997)...)
+		want = append(want, 9)
+		assert.Equal(t, want, iokit.ReadAllFromStart(fil))
+	})
+
+	t.Run("Read - empty buffer beyond the end", func(t *testing.T) {
+		// --- Given ---
+		fil := create(t, os.O_RDWR, []byte{0, 1, 2})
+		iokit.Seek(fil, 5, io.SeekStart)
+		dst := make([]byte, 0)
+
+		// --- When ---
+		have, err := fil.Read(dst)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, 0, have)
+	})
+
 	t.Run("WriteAt - empty file at the beginning", func(t *testing.T) {
 		// --- Given ---
 		fil := create(t, os.O_RDWR, nil)

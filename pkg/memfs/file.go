@@ -437,6 +437,9 @@ func (fil *File) WriteTo(w io.Writer) (int64, error) {
 			Err:  syscall.EISDIR,
 		}
 	}
+	if fil.off >= len(fil.buf) {
+		return 0, nil
+	}
 	n, err := w.Write(fil.buf[fil.off:])
 	fil.off += n
 	return int64(n), err
@@ -476,7 +479,10 @@ func (fil *File) Read(p []byte) (int, error) {
 		}
 	}
 	// Nothing more to read.
-	if len(p) > 0 && fil.off >= len(fil.buf) {
+	if fil.off >= len(fil.buf) {
+		if len(p) == 0 {
+			return 0, nil
+		}
 		return 0, io.EOF
 	}
 	n := copy(p, fil.buf[fil.off:])
@@ -606,6 +612,9 @@ func (fil *File) ReadFrom(r io.Reader) (int64, error) {
 // offset to the end of the buffer. When the file represents a directory, it
 // returns an empty string.
 func (fil *File) String() string {
+	if fil.off >= len(fil.buf) {
+		return ""
+	}
 	s := string(fil.buf[fil.off:])
 	fil.off = len(fil.buf)
 	return s
@@ -758,12 +767,13 @@ func (fil *File) grow(n int) {
 	if ok := fil.tryGrowByReslice(n); ok {
 		return
 	}
-	if fil.buf == nil && n <= smallBufferSize {
-		fil.buf = make([]byte, n, smallBufferSize)
+	if fil.buf == nil && fil.off+n <= smallBufferSize {
+		fil.buf = make([]byte, fil.off+n, smallBufferSize)
 		return
 	}
-	// Allocate bigger buffer.
-	tmp := makeSlice(cap(fil.buf)*2 + n) // cap(b.buf) may be zero.
+	// Allocate bigger buffer. The offset may be beyond the capacity after a
+	// seek past the end.
+	tmp := makeSlice(max(cap(fil.buf)*2+n, fil.off+n))
 	copy(tmp, fil.buf)
 	fil.buf = tmp
 }

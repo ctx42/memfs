@@ -1003,6 +1003,21 @@ func Test_File_Write(t *testing.T) {
 		assert.Equal(t, syscall.EISDIR, e.Err)
 		assert.Equal(t, 0, have)
 	})
+
+	t.Run("seek far beyond capacity", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFile("file")
+		_ = must.Value(fil.Seek(4096, io.SeekStart))
+
+		// --- When ---
+		have, err := fil.Write([]byte{1})
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, 1, have)
+		assert.Equal(t, 4097, fil.Offset())
+		assert.Equal(t, append(make([]byte, 4096), 1), fil.buf)
+	})
 }
 
 func Test_File_Write_tabular(t *testing.T) {
@@ -1169,6 +1184,20 @@ func Test_File_WriteByte(t *testing.T) {
 		assert.Equal(t, "write", e.Op)
 		assert.Equal(t, "dir", e.Path)
 		assert.Equal(t, syscall.EISDIR, e.Err)
+	})
+
+	t.Run("seek far beyond capacity", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFile("file")
+		_ = must.Value(fil.Seek(4096, io.SeekStart))
+
+		// --- When ---
+		err := fil.WriteByte(1)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, 4097, fil.Offset())
+		assert.Equal(t, append(make([]byte, 4096), 1), fil.buf)
 	})
 }
 
@@ -1562,6 +1591,22 @@ func Test_File_WriteTo(t *testing.T) {
 		assert.Equal(t, syscall.EISDIR, e.Err)
 		assert.Equal(t, int64(0), have)
 	})
+
+	t.Run("offset beyond length", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2, 3})
+		_ = must.Value(fil.Seek(6, io.SeekStart))
+		dst := &bytes.Buffer{}
+
+		// --- When ---
+		have, err := fil.WriteTo(dst)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), have)
+		assert.Equal(t, 0, dst.Len())
+		assert.Equal(t, 6, fil.Offset())
+	})
 }
 
 func Test_File_WriteString(t *testing.T) {
@@ -1709,6 +1754,21 @@ func Test_File_Read(t *testing.T) {
 
 		assert.Equal(t, 0, have)
 		assert.Equal(t, []byte{0, 0, 0}, buf)
+	})
+
+	t.Run("empty buffer with offset beyond length", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{0, 1, 2})
+		_ = must.Value(fil.Seek(5, io.SeekStart))
+		dst := make([]byte, 0)
+
+		// --- When ---
+		have, err := fil.Read(dst)
+
+		// --- Then ---
+		assert.NoError(t, err)
+		assert.Equal(t, 0, have)
+		assert.Equal(t, 5, fil.Offset())
 	})
 }
 
@@ -2146,6 +2206,19 @@ func Test_File_String(t *testing.T) {
 
 		// --- Then ---
 		assert.Equal(t, "", have)
+	})
+
+	t.Run("offset beyond length", func(t *testing.T) {
+		// --- Given ---
+		fil := MustFileWith("file", []byte{'A', 'B', 'C'})
+		_ = must.Value(fil.Seek(5, io.SeekStart))
+
+		// --- When ---
+		have := fil.String()
+
+		// --- Then ---
+		assert.Equal(t, "", have)
+		assert.Equal(t, 5, fil.Offset())
 	})
 }
 
