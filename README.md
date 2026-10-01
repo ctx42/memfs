@@ -80,7 +80,7 @@ _, _ = fil.Write([]byte{4, 5})
 _, _ = fil.Seek(0, io.SeekStart)
 
 content, _ := io.ReadAll(fil)
-fmt.Println(content)
+fmt.Printf("%v\n", content)
 
 // Output: [0 1 4 5]
 ```
@@ -96,7 +96,7 @@ _, _ = fil.Write([]byte{4, 5})
 _, _ = fil.Seek(0, io.SeekStart)
 
 content, _ := io.ReadAll(fil)
-fmt.Println(content)
+fmt.Printf("%v\n", content)
 
 // Output: [0 1 4 5]
 ```
@@ -112,7 +112,7 @@ _, _ = fil.Write([]byte{4, 5})
 _, _ = fil.Seek(0, io.SeekStart)
 
 content, _ := io.ReadAll(fil)
-fmt.Println(content)
+fmt.Printf("%v\n", content)
 
 // Output: [0 1 2 3 4 5]
 ```

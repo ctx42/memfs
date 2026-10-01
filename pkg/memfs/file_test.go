@@ -1365,7 +1365,7 @@ func Test_File_WriteAt(t *testing.T) {
 		assert.Equal(t, 0, fil.Offset())
 		assert.Equal(t, 1003, fil.Len())
 		assert.Equal(t, 1006, fil.Cap())
-		want := append([]byte{0, 1, 2}, bytes.Repeat([]byte{0}, 997)...)
+		want := append([]byte{0, 1, 2}, make([]byte, 997)...)
 		want = append(want, []byte{3, 4, 5}...)
 		assert.Equal(t, want, fil.buf)
 		assert.NoError(t, fil.Close())
@@ -1828,7 +1828,7 @@ func Test_File_Read_tabular(t *testing.T) {
 			testN:   "read all",
 			content: []byte{0, 1, 2},
 			opts:    nil,
-			dst:     make([]byte, 3, 3),
+			dst:     make([]byte, 3),
 			wN:      3,
 			wOff:    3,
 			wLen:    3,
@@ -2221,7 +2221,7 @@ func Test_File_ReadFrom_tabular(t *testing.T) {
 		},
 		{
 			testN:   "use of tmp space",
-			content: bytes.Repeat([]byte{0}, 50),
+			content: make([]byte, 50),
 			opts:    []func(*File){WithFileOffset(25)},
 			src:     bytes.Repeat([]byte{1, 2, 3}, 1<<9),
 			wN:      3 * 1 << 9,
@@ -2229,7 +2229,7 @@ func Test_File_ReadFrom_tabular(t *testing.T) {
 			wLen:    3*1<<9 + 25,
 			wCap:    3984,
 			wBuf: append(
-				bytes.Repeat([]byte{0}, 25),
+				make([]byte, 25),
 				bytes.Repeat([]byte{1, 2, 3}, 1<<9)...,
 			),
 		},

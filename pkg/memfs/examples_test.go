@@ -20,7 +20,7 @@ func ExampleNewFile() {
 	_, _ = fil.Seek(0, io.SeekStart)
 
 	content, _ := io.ReadAll(fil)
-	fmt.Println(content)
+	fmt.Printf("%v\n", content)
 
 	// Output: [0 1 4 5]
 }
@@ -33,7 +33,7 @@ func ExampleFileWith() {
 	_, _ = fil.Seek(0, io.SeekStart)
 
 	content, _ := io.ReadAll(fil)
-	fmt.Println(content)
+	fmt.Printf("%v\n", content)
 
 	// Output: [0 1 4 5]
 }
@@ -46,7 +46,7 @@ func ExampleFileWith_appendMode() {
 	_, _ = fil.Seek(0, io.SeekStart)
 
 	content, _ := io.ReadAll(fil)
-	fmt.Println(content)
+	fmt.Printf("%v\n", content)
 
 	// Output: [0 1 2 3 4 5]
 }
