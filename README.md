@@ -1,69 +1,58 @@
+[![Go](https://github.com/ctx42/memfs/actions/workflows/go.yml/badge.svg)](https://github.com/ctx42/memfs/actions/workflows/go.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/ctx42/memfs?status.svg)](https://pkg.go.dev/github.com/ctx42/memfs/pkg/memfs)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ctx42/memfs)](https://goreportcard.com/report/github.com/ctx42/memfs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+
 # memfs
 
-[![GoDoc](https://pkg.go.dev/badge/github.com/ctx42/memfs?status.svg)](https://pkg.go.dev/github.com/ctx42/memfs)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ctx42/memfs)](https://goreportcard.com/report/github.com/ctx42/memfs)
+In-memory files and directories for Go that behave like `os.File` and plug
+into the `io` and `io/fs` APIs.
 
-**memfs** is a lightweight, in-memory file system implementation in Go,
-designed for efficient file and directory operations without disk I/O. It
-provides a flexible and performant alternative for scenarios like unit testing,
-or temporary data manipulation in memory. The package implements key interfaces
-from the `io` and `io/fs` standard library packages, making it seamlessly
-integrable with existing Go file system APIs.
+**memfs** keeps file and directory contents in memory instead of on disk. Its
+`memfs.File` type represents both files and directories and implements the
+standard `io` and `io/fs` interfaces, so it can stand in wherever code takes
+one of them — in unit tests, or for temporary data that never needs to touch
+the disk.
 
-The file and directory behavior mimic the `os` package as closely as possible -
-see tests in [compare_test.go](pkg/memfs/compare_test.go) file.
+The behavior follows the `os` package as closely as possible: the tests in
+[compare_test.go](pkg/memfs/compare_test.go) run the same checks against
+`os.File` and `memfs.File`.
 
-The workhorse of the package is the `memfs.File` type which is used to represent
-files or directories and implements a lot of useful interfaces.
+## Features
 
-## Key Features
+- **Files and directories in one type**: create regular files and
+  directories, write, append, truncate, and seek, and add, read, and walk
+  directory entries.
+- **Standard interfaces**: `memfs.File` implements:
+  - `fmt.Stringer`
+  - `fs.DirEntry`
+  - `fs.FS`
+  - `fs.File`
+  - `fs.FileInfo`
+  - `fs.ReadDirFile`
+  - `fs.ReadFileFS`
+  - `io.ByteReader`
+  - `io.ByteWriter`
+  - `io.Closer`
+  - `io.Reader`
+  - `io.ReaderAt`
+  - `io.ReaderFrom`
+  - `io.Seeker`
+  - `io.StringWriter`
+  - `io.Writer`
+  - `io.WriterAt`
+  - `io.WriterTo`
+- **A directory as an `fs.FS`**: `File.FS()` returns a file system that also
+  implements `fs.StatFS`, `fs.ReadFileFS`, and `fs.ReadDirFS`, so `fs.ReadFile`,
+  `fs.Stat`, and `fs.WalkDir` work on it.
+- **Buffer control**: start from existing content or a preallocated capacity
+  with `FileWith`, and take the buffer back with `Release`. The buffer grows by
+  reslicing where possible, and unused capacity is kept zeroed.
+- **No dependencies**: the package imports only the standard library.
 
-**Comprehensive Interface Support**: File implements a wide range of standard
-library interfaces, including:
+## Prerequisites
 
-- `fmt.Stringer`
-- `fs.DirEntry`
-- `fs.File`
-- `fs.FileInfo`
-- `fs.FS`
-- `fs.ReadDirFile`
-- `fs.ReadFileFS`
-- `io.ByteReader`
-- `io.ByteWriter`
-- `io.Closer`
-- `io.Reader`
-- `io.ReaderAt`
-- `io.Seeker`
-- `io.StringWriter`
-- `io.ReaderFrom`
-- `io.Writer`
-- `io.WriterAt`
-- `io.WriterTo`
-
-**In-Memory Operations**: All data is stored in RAM, enabling ultra-fast
-read/write access without the overhead of disk operations. Ideal for
-performance-critical applications where filesystem is needed or environments
-where persistence is not required.
-
-**File and Directory Management**:
-
-- Supports creating regular files and directories.
-- Handles file appending, truncation, seeking.
-- Directory entries can be added, read, and traversed recursively.
-
-**Efficiency and Optimization**:
-
-- Uses reslicing for buffer growth where possible to minimize allocations.
-- Zeroes out unused buffer space to prevent data leaks.
-- Supports initial buffer capacities for optimized reads/writes.
-
-**Portability and Simplicity**: Pure Go implementation with no external
-  dependencies beyond the standard library. Easy to embed in any Go project.
-
-This package excels in testing frameworks (e.g., mocking file systems),
-embedded systems, or applications requiring ephemeral storage, offering a
-robust alternative to disk-based file systems like `os.DirFS`.
+Go 1.26 or later.
 
 ## Installation
 
@@ -71,11 +60,17 @@ robust alternative to disk-based file systems like `os.DirFS`.
 go get github.com/ctx42/memfs
 ```
 
-## Examples
+Then import the package:
+
+```go
+import "github.com/ctx42/memfs/pkg/memfs"
+```
+
+## Usage
 
 ### Creating an Empty File
 
-<!-- gmdoceg:ExampleNewFile -->
+<!-- gmmce:pkg/memfs/ExampleNewFile -->
 ```go
 fil, _ := memfs.NewFile("file")
 
@@ -92,7 +87,7 @@ fmt.Println(content)
 
 ### Creating a File With Content
 
-<!-- gmdoceg:ExampleFileWith -->
+<!-- gmmce:pkg/memfs/ExampleFileWith -->
 ```go
 fil, _ := memfs.FileWith("file", []byte{0, 1, 2, 3})
 
@@ -108,7 +103,7 @@ fmt.Println(content)
 
 ### Append Mode
 
-<!-- gmdoceg:ExampleFileWith_appendMode -->
+<!-- gmmce:pkg/memfs/ExampleFileWith_appendMode -->
 ```go
 fil, _ := memfs.FileWith("file", []byte{0, 1, 2, 3}, memfs.WithFileAppend)
 
@@ -124,7 +119,7 @@ fmt.Println(content)
 
 ### Creating a Directory and Adding Files
 
-<!-- gmdoceg:ExampleNewDirectory -->
+<!-- gmmce:pkg/memfs/ExampleNewDirectory -->
 ```go
 fil0, _ := memfs.FileWith("file0", []byte{0})
 fil1, _ := memfs.FileWith("file1", []byte{1})
@@ -143,26 +138,55 @@ for _, entry := range entries {
 // -rw------- 1 0001-01-01 00:00:00 file1
 ```
 
-### Using as fs.FS interface.
+### Using a Directory as an fs.FS
 
+<!-- gmmce:pkg/memfs/ExampleFile_FS -->
 ```go
-fsys := dir.FS()
-data, _ := fs.ReadFile(fsys, "file1.txt")
-fmt.Println(string(data)) // Output: Content 1
+fil0, _ := memfs.FileWith("file0", []byte("content 0"))
+fil1, _ := memfs.FileWith("file1", []byte("content 1"))
+sub, _ := memfs.NewDirectory("sub")
+_ = sub.AddFile(fil1)
+
+root := memfs.NewRoot()
+_ = root.AddFile(fil0)
+_ = root.AddFile(sub)
+
+fsys := root.FS()
+data, _ := fs.ReadFile(fsys, "sub/file1")
+fmt.Println(string(data))
+
+_ = fs.WalkDir(fsys, ".", func(pth string, _ fs.DirEntry, _ error) error {
+	fmt.Println(pth)
+	return nil
+})
+
+// Output:
+// content 1
+// .
+// file0
+// sub
+// sub/file1
 ```
 
-See more examples in [examples_test.go](pkg/memfs/examples_test.go)
+## Behavior Notes
 
-For more advanced usage, refer to
-the [GoDoc documentation](https://pkg.go.dev/github.com/ctx42/memfs).
+- A directory hands out its entries, not copies: `Open` returns the same
+  `*memfs.File` every time, so everyone who opens a file shares its offset.
+  `File.ReadFile` and `fs.ReadFile` on `File.FS()` return the whole content
+  and leave the offset alone.
+- `Close` resets the offset and the `ReadDir` position to zero; the content
+  stays.
+- In append mode (`memfs.WithFileAppend`) every write goes to the end of the
+  file, and `WriteAt` returns an error.
+- A `memfs.File` is not safe for concurrent use.
 
-## Contributing
+## Resources
 
-Contributions are welcome! Please submit issues or pull requests on
-the [GitHub repository](https://github.com/ctx42/memfs). Ensure the code adheres
-to Go conventions and includes tests.
+- More examples: [examples_test.go](pkg/memfs/examples_test.go).
+- API reference:
+  [pkg.go.dev](https://pkg.go.dev/github.com/ctx42/memfs/pkg/memfs).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.md)
-file for details.
+This project is licensed under the MIT License — see [LICENSE.md](LICENSE.md)
+for details.

@@ -68,3 +68,30 @@ func ExampleNewDirectory() {
 	// -rw------- 1 0001-01-01 00:00:00 file0
 	// -rw------- 1 0001-01-01 00:00:00 file1
 }
+
+func ExampleFile_FS() {
+	fil0, _ := memfs.FileWith("file0", []byte("content 0"))
+	fil1, _ := memfs.FileWith("file1", []byte("content 1"))
+	sub, _ := memfs.NewDirectory("sub")
+	_ = sub.AddFile(fil1)
+
+	root := memfs.NewRoot()
+	_ = root.AddFile(fil0)
+	_ = root.AddFile(sub)
+
+	fsys := root.FS()
+	data, _ := fs.ReadFile(fsys, "sub/file1")
+	fmt.Println(string(data))
+
+	_ = fs.WalkDir(fsys, ".", func(pth string, _ fs.DirEntry, _ error) error {
+		fmt.Println(pth)
+		return nil
+	})
+
+	// Output:
+	// content 1
+	// .
+	// file0
+	// sub
+	// sub/file1
+}
