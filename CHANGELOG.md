@@ -1,3 +1,6 @@
+## v0.5.1 (Sat, 10 Oct 2026 19:22:14 UTC)
+- build(deps): update 2 ctx42 dependencies.
+
 ## v0.5.0 (Thu, 01 Oct 2026 18:18:14 UTC)
 - build(deps): bump ctx42/testing to v0.56.0 and testkit to v0.15.0.
 - fix(memfs): keep ReadFrom data intact when writing mid-file.
