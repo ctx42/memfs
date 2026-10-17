@@ -1,3 +1,7 @@
+## v0.5.2 (Sat, 17 Oct 2026 22:03:46 UTC)
+- ci: set C42_CC_RUN_ID in the workflow environment.
+- chore(deps): update dependencies.
+
 ## v0.5.1 (Sat, 10 Oct 2026 19:22:14 UTC)
 - build(deps): update 2 ctx42 dependencies.
 
