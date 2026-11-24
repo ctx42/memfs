@@ -1,3 +1,6 @@
+## v0.5.3 (Tue, 24 Nov 2026 14:34:48 UTC)
+- chore(deps): update dependencies.
+
 ## v0.5.2 (Sat, 17 Oct 2026 22:03:46 UTC)
 - ci: set C42_CC_RUN_ID in the workflow environment.
 - chore(deps): update dependencies.
